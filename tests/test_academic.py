@@ -77,15 +77,20 @@ async def test_academic_and_master_data_workflow():
         assert "Aktif Berjalan" in res_ay_list.text
 
         # 3. Tambah 2 Orang Guru
+        nip_1 = f"19750510_{unique_id}"
+        nip_2 = f"19850315_{unique_id}"
+        code_mat = f"MAT_{unique_id}"
+        code_ipa = f"IPA_{unique_id}"
+
         res_g1 = await ac.post(
             "/teachers",
             data={
                 "name": "Drs. Bambang Sudarsono, M.Pd",
-                "nip": "197505102000031002",
+                "nip": nip_1,
                 "gender": "L",
                 "employment_status": "PNS",
                 "phone": "0811223344",
-                "email": "bambang@smp.sch.id"
+                "email": f"bambang_{unique_id}@smp.sch.id"
             },
             headers=headers,
             follow_redirects=False
@@ -96,11 +101,11 @@ async def test_academic_and_master_data_workflow():
             "/teachers",
             data={
                 "name": "Siti Nurhaliza, S.Si",
-                "nip": "198503152010012003",
+                "nip": nip_2,
                 "gender": "P",
                 "employment_status": "PPPK",
                 "phone": "0811556677",
-                "email": "siti@smp.sch.id"
+                "email": f"siti_{unique_id}@smp.sch.id"
             },
             headers=headers,
             follow_redirects=False
@@ -116,7 +121,7 @@ async def test_academic_and_master_data_workflow():
         # 4. Tambah Mata Pelajaran (Matematika & IPA)
         res_m1 = await ac.post(
             "/subjects",
-            data={"code": "MAT-7", "name": "Matematika", "grade_level": "VII", "description": "Matematika Dasar VII"},
+            data={"code": code_mat, "name": "Matematika", "grade_level": "VII", "description": "Matematika Dasar VII"},
             headers=headers,
             follow_redirects=False
         )
@@ -124,7 +129,7 @@ async def test_academic_and_master_data_workflow():
 
         res_m2 = await ac.post(
             "/subjects",
-            data={"code": "IPA-7", "name": "Ilmu Pengetahuan Alam", "grade_level": "VII", "description": "IPA Terpadu VII"},
+            data={"code": code_ipa, "name": "Ilmu Pengetahuan Alam", "grade_level": "VII", "description": "IPA Terpadu VII"},
             headers=headers,
             follow_redirects=False
         )
@@ -132,24 +137,23 @@ async def test_academic_and_master_data_workflow():
 
         res_s_list = await ac.get("/subjects", headers=headers)
         assert res_s_list.status_code == 200
-        assert "MAT-7" in res_s_list.text
-        assert "IPA-7" in res_s_list.text
+        assert code_mat.upper() in res_s_list.text
+        assert code_ipa.upper() in res_s_list.text
 
         # 5. Tambah Kelas dengan Wali Kelas
-        # Ambil ID guru dari database melalui context
         from app.core.database import AsyncSessionLocal
         from app.models.models import Teacher, Subject, Classroom, DutyTeacher, Schedule
         from sqlalchemy import select
 
         async with AsyncSessionLocal() as session:
-            t_res = await session.execute(select(Teacher).where(Teacher.nip == "197505102000031002"))
-            teacher_1 = t_res.scalar_one()
+            t_res = await session.execute(select(Teacher).where(Teacher.nip == nip_1))
+            teacher_1 = t_res.scalars().first()
 
-            t2_res = await session.execute(select(Teacher).where(Teacher.nip == "198503152010012003"))
-            teacher_2 = t2_res.scalar_one()
+            t2_res = await session.execute(select(Teacher).where(Teacher.nip == nip_2))
+            teacher_2 = t2_res.scalars().first()
 
-            s_res = await session.execute(select(Subject).where(Subject.code == "MAT-7"))
-            subject_1 = s_res.scalar_one()
+            s_res = await session.execute(select(Subject).where(Subject.code == code_mat.upper()))
+            subject_1 = s_res.scalars().first()
 
         res_c = await ac.post(
             "/classrooms",
@@ -171,8 +175,8 @@ async def test_academic_and_master_data_workflow():
 
         # 6. Atur Jadwal Pelajaran
         async with AsyncSessionLocal() as session:
-            cl_res = await session.execute(select(Classroom).where(Classroom.name == "VII A"))
-            classroom_1 = cl_res.scalar_one()
+            cl_res = await session.execute(select(Classroom).where(Classroom.name == "VII A", Classroom.school_id == teacher_1.school_id))
+            classroom_1 = cl_res.scalars().first()
 
         res_sch = await ac.post(
             "/schedules",

@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}Absensi Guru di Kelas - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Absensi Guru</span></li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  #cameraVideo, #photoCanvas, #photoPreview {
+    width: 100%;
+    max-width: 420px;
+    height: 315px;
+    object-fit: cover;
+    border-radius: 8px;
+    background-color: #000;
+  }
+  .gps-status-box {
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    border-radius: 6px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="fa-solid fa-clipboard-user text-primary me-2"></i> Presensi Kehadiran Guru di Kelas</h3>
+      <p class="text-body-secondary small mb-0">
+        Hari ini: <strong>{{ today_day_name }}</strong>, {{ today_date.strftime('%d %B %Y') }} | Tahun Pelajaran: <strong>{{ active_ay.name }} ({{ active_ay.semester }})</strong>
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/attendance/history" class="btn btn-outline-primary">
+        <i class="fa-solid fa-clock-rotate-left me-1"></i> Riwayat Absensi Guru
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Pemilih Guru (Jika login sebagai Operator / Kepsek) -->
+{% if user.role.value in ['operator_sekolah', 'kepala_sekolah', 'superadmin'] %}
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <form method="get" action="/attendance" class="row g-3 align-items-center">
+      <div class="col-md-3">
+        <label class="form-label fw-semibold text-secondary small mb-0"><i class="fa-solid fa-user-tie me-1"></i> Mode Guru Pengajar:</label>
+      </div>
+      <div class="col-md-6">
+        <select class="form-select form-select-sm" name="teacher_id" onchange="this.form.submit()">
+          <option value="">-- Pilih Guru untuk Input / Cek Jadwal Mengajar --</option>
+          {% for t in teachers_list %}
+          <option value="{{ t.id }}" {% if current_teacher and current_teacher.id == t.id %}selected{% endif %}>
+            {{ t.name }} {% if t.nip %}(NIP: {{ t.nip }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+          <i class="fa-solid fa-arrows-rotate me-1"></i> Muat Jadwal
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Daftar Jadwal Mengajar Hari Ini -->
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+        <div>
+          <span class="fw-bold"><i class="fa-solid fa-calendar-day text-primary me-2"></i> Jadwal Mengajar Kelas Hari Ini</span>
+          {% if current_teacher %}
+          <span class="badge bg-primary-subtle text-primary ms-2">{{ current_teacher.name }}</span>
+          {% endif %}
+        </div>
+        <span class="badge bg-success">Wajib Foto & GPS</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col" style="width: 50px;" class="text-center">No</th>
+                <th scope="col">Jam Mengajar</th>
+                <th scope="col">Kelas</th>
+                <th scope="col">Mata Pelajaran</th>
+                <th scope="col">Guru Pengampu</th>
+                <th scope="col">Status Presensi</th>
+                <th scope="col" class="text-center" style="width: 170px;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in today_schedules %}
+              {% set sc = item.schedule %}
+              {% set att = item.attendance %}
+              <tr>
+                <td class="text-center text-secondary fw-semibold">{{ loop.index }}</td>
+                <td>
+                  <span class="badge bg-light text-dark border font-monospace">
+                    <i class="fa-regular fa-clock text-primary me-1"></i>
+                    {{ sc.start_time.strftime('%H:%M') }} - {{ sc.end_time.strftime('%H:%M') }}
+                  </span>
+                </td>
+                <td class="fw-bold fs-6 text-primary">{{ sc.classroom.name }}</td>
+                <td>
+                  <div class="fw-semibold">{{ sc.subject.name }}</div>
+                  <small class="text-secondary">{{ sc.subject.code }}</small>
+                </td>
+                <td>
+                  <i class="fa-solid fa-chalkboard-user text-secondary me-1"></i>
+                  {{ sc.teacher.name }}
+                </td>
+                <td>
+                  {% if item.is_attended %}
+                    <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i> Sudah Absen ({{ att.attendance_time.strftime('%H:%M') }})</span>
+                  {% else %}
+                    <span class="badge bg-warning-subtle text-dark border"><i class="fa-solid fa-hourglass-half me-1 text-warning"></i> Belum Absen</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if not item.is_attended %}
+                  <button type="button" class="btn btn-primary btn-sm btn-buka-absen"
+                          data-schedule-id="{{ sc.id }}"
+                          data-classroom="{{ sc.classroom.name }}"
+                          data-subject="{{ sc.subject.name }}"
+                          data-teacher-id="{{ sc.teacher_id }}"
+                          data-teacher-name="{{ sc.teacher.name }}"
+                          data-time="{{ sc.start_time.strftime('%H:%M') }} - {{ sc.end_time.strftime('%H:%M') }}">
+                    <i class="fa-solid fa-camera me-1"></i> Absen Sekarang
+                  </button>
+                  {% else %}
+                  <button class="btn btn-outline-success btn-sm" disabled>
+                    <i class="fa-solid fa-check-double me-1"></i> Selesai
+                  </button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="text-center py-4 text-secondary">
+                  {% if not current_teacher and user.role.value in ['operator_sekolah', 'kepala_sekolah'] %}
+                    Silakan pilih guru pengajar terlebih dahulu untuk menampilkan jadwal mengajar hari ini.
+                  {% else %}
+                    Tidak ada jadwal mengajar kelas untuk hari ini ({{ today_day_name }}).
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORM PRESENSI KEHADIRAN (KAMERA LIVE & AUTO GPS) -->
+<div class="modal fade" id="modalPresensi" tabindex="-1" aria-hidden="true" data-coreui-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold text-primary">
+          <i class="fa-solid fa-clipboard-check me-2"></i> Konfirmasi Kehadiran di Dalam Kelas
+        </h5>
+        <button type="button" class="btn-close" data-coreui-dismiss="modal" onclick="stopCamera()" aria-label="Close"></button>
+      </div>
+      
+      <form id="formAttendance" action="/attendance/submit" method="post">
+        <!-- Hidden input parameters -->
+        <input type="hidden" name="schedule_id" id="modalScheduleId">
+        <input type="hidden" name="teacher_id" id="modalTeacherId">
+        <input type="hidden" name="photo_base64" id="modalPhotoBase64">
+        <input type="hidden" name="latitude" id="modalLatitude">
+        <input type="hidden" name="longitude" id="modalLongitude">
+        <input type="hidden" name="location_accuracy" id="modalAccuracy">
+        <input type="hidden" name="device_info" id="modalDeviceInfo">
+
+        <div class="modal-body row g-3">
+          <!-- Info Jadwal -->
+          <div class="col-12 bg-light p-3 rounded border">
+            <div class="row text-center text-md-start">
+              <div class="col-md-4">
+                <span class="text-secondary small d-block">Kelas:</span>
+                <strong id="modalClassText" class="text-primary fs-5">-</strong>
+              </div>
+              <div class="col-md-5">
+                <span class="text-secondary small d-block">Mata Pelajaran:</span>
+                <strong id="modalSubjectText">-</strong>
+              </div>
+              <div class="col-md-3">
+                <span class="text-secondary small d-block">Jam Pelajaran:</span>
+                <span id="modalTimeText" class="badge bg-secondary font-monospace">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- GPS Location Box (Wajib Aktif) -->
+          <div class="col-12">
+            <div id="gpsStatusContainer" class="gps-status-box bg-warning-subtle text-dark border border-warning d-flex align-items-center justify-content-between">
+              <div>
+                <i class="fa-solid fa-location-dot fa-lg text-danger me-2"></i>
+                <span id="gpsStatusText">Mendeteksi titik koordinat lokasi GPS Anda...</span>
+              </div>
+              <button type="button" class="btn btn-outline-dark btn-sm" onclick="requestGeolocation()">
+                <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh GPS
+              </button>
+            </div>
+          </div>
+
+          <!-- Area Kamera Live Bukti Kehadiran di Kelas -->
+          <div class="col-md-6 text-center">
+            <label class="form-label fw-bold d-block text-start">
+              <i class="fa-solid fa-camera text-primary me-1"></i> Bukti Foto di Kelas <span class="text-danger">*</span>
+            </label>
+            
+            <div id="cameraContainer" class="position-relative d-inline-block">
+              <video id="cameraVideo" autoplay playsinline></video>
+              <canvas id="photoCanvas" style="display: none;"></canvas>
+              <img id="photoPreview" style="display: none;" alt="Preview Foto">
+            </div>
+
+            <div class="mt-2 d-flex justify-content-center gap-2">
+              <button type="button" class="btn btn-primary btn-sm" id="btnAmbilFoto" onclick="takeSnapshot()">
+                <i class="fa-solid fa-camera-retro me-1"></i> Ambil Foto Kehadiran
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnUlangFoto" onclick="retakeSnapshot()" style="display: none;">
+                <i class="fa-solid fa-rotate-left me-1"></i> Ambil Ulang
+              </button>
+            </div>
+            <div class="form-text small">Pastikan wajah Anda dan suasana ruang kelas terlihat jelas.</div>
+          </div>
+
+          <!-- Formulir Keterangan Jurnal Mengajar -->
+          <div class="col-md-6">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Status Kehadiran <span class="text-danger">*</span></label>
+                <select class="form-select" name="status" required>
+                  <option value="Hadir" selected>Hadir Mengajar di Kelas</option>
+                  <option value="Izin">Izin (Disertai Tugas)</option>
+                  <option value="Sakit">Sakit</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Materi Pokok Pembelajaran</label>
+                <input type="text" class="form-control" name="teaching_material" placeholder="Contoh: Bab 3 Persamaan Linier Dua Variabel">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Catatan Jurnal / Keterangan Tambahan</label>
+                <textarea class="form-control" name="notes" rows="3" placeholder="Catatan kondisi siswa, materi tuntas, atau catatan piket..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal" onclick="stopCamera()">Batal</button>
+          <button type="submit" class="btn btn-success fw-bold" id="btnSubmitAttendance" disabled>
+            <i class="fa-solid fa-check-circle me-1"></i> Simpan & Kirim Absensi
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let videoStream = null;
+  let hasLocation = false;
+  let hasPhoto = false;
+
+  const modalEl = document.getElementById('modalPresensi');
+  const coreuiModal = new coreui.Modal(modalEl);
+
+  // Pasang listener pada seluruh tombol buka absen
+  document.querySelectorAll('.btn-buka-absen').forEach(button => {
+    button.addEventListener('click', function() {
+      const scheduleId = this.getAttribute('data-schedule-id');
+      const teacherId = this.getAttribute('data-teacher-id');
+      const classroomName = this.getAttribute('data-classroom');
+      const subjectName = this.getAttribute('data-subject');
+      const timeStr = this.getAttribute('data-time');
+
+      document.getElementById('modalScheduleId').value = scheduleId;
+      document.getElementById('modalTeacherId').value = teacherId;
+      document.getElementById('modalClassText').innerText = classroomName;
+      document.getElementById('modalSubjectText').innerText = subjectName;
+      document.getElementById('modalTimeText').innerText = timeStr;
+      document.getElementById('modalDeviceInfo').value = navigator.userAgent;
+
+      // Reset state form
+      hasLocation = false;
+      hasPhoto = false;
+      document.getElementById('modalPhotoBase64').value = '';
+      retakeSnapshot();
+      checkSubmitEligibility();
+
+      // Buka modal & inisialisasi hardware
+      coreuiModal.show();
+      startCamera();
+      requestGeolocation();
+    });
+  });
+
+  // 1. Geolocation GPS (Wajib Aktif)
+  function requestGeolocation() {
+    const statusBox = document.getElementById('gpsStatusContainer');
+    const statusText = document.getElementById('gpsStatusText');
+
+    if (!navigator.geolocation) {
+      statusBox.className = "gps-status-box bg-danger-subtle text-danger border border-danger";
+      statusText.innerText = "Browser tidak mendukung Geolocation GPS.";
+      hasLocation = false;
+      checkSubmitEligibility();
+      return;
+    }
+
+    statusBox.className = "gps-status-box bg-warning-subtle text-dark border border-warning";
+    statusText.innerHTML = "<i class='fa-solid fa-spinner fa-spin me-1'></i> Membaca koordinat lokasi GPS...";
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const acc = position.coords.accuracy;
+
+        document.getElementById('modalLatitude').value = lat;
+        document.getElementById('modalLongitude').value = lng;
+        document.getElementById('modalAccuracy').value = acc;
+
+        statusBox.className = "gps-status-box bg-success-subtle text-success border border-success";
+        statusText.innerHTML = `<strong><i class='fa-solid fa-circle-check me-1'></i> Koordinat Terkunci:</strong> Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)} (Akurasi: ±${Math.round(acc)}m)`;
+        hasLocation = true;
+        checkSubmitEligibility();
+      },
+      (error) => {
+        statusBox.className = "gps-status-box bg-danger-subtle text-danger border border-danger";
+        let errMsg = "Izin GPS ditolak.";
+        if (error.code === error.PERMISSION_DENIED) {
+          errMsg = "Izin lokasi GPS ditolak! Harap izinkan akses lokasi di pengaturan browser agar dapat melakukan absensi.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          errMsg = "Informasi lokasi tidak tersedia pada perangkat ini.";
+        } else if (error.code === error.TIMEOUT) {
+          errMsg = "Waktu pencarian GPS habis. Silakan klik tombol Refresh GPS.";
+        }
+        statusText.innerHTML = `<i class='fa-solid fa-triangle-exclamation me-1'></i> ${errMsg}`;
+        hasLocation = false;
+        checkSubmitEligibility();
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
+  }
+
+  // 2. Kamera Langsung
+  async function startCamera() {
+    const video = document.getElementById('cameraVideo');
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false
+      });
+      video.srcObject = videoStream;
+    } catch (err) {
+      alert("Kamera tidak dapat diakses atau diblokir browser. Harap berikan izin akses kamera.");
+    }
+  }
+
+  function stopCamera() {
+    if (videoStream) {
+      videoStream.getTracks().forEach(track => track.stop());
+      videoStream = null;
+    }
+  }
+
+  function takeSnapshot() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('photoCanvas');
+    const preview = document.getElementById('photoPreview');
+    const photoBase64Input = document.getElementById('modalPhotoBase64');
+
+    if (!videoStream) {
+      alert("Kamera belum aktif!");
+      return;
+    }
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const base64Data = canvas.toDataURL('image/jpeg', 0.85);
+    photoBase64Input.value = base64Data;
+    preview.src = base64Data;
+
+    // Tampilkan preview, sembunyikan live video
+    video.style.display = 'none';
+    preview.style.display = 'inline-block';
+    document.getElementById('btnAmbilFoto').style.display = 'none';
+    document.getElementById('btnUlangFoto').style.display = 'inline-block';
+
+    hasPhoto = true;
+    checkSubmitEligibility();
+  }
+
+  function retakeSnapshot() {
+    const video = document.getElementById('cameraVideo');
+    const preview = document.getElementById('photoPreview');
+    const photoBase64Input = document.getElementById('modalPhotoBase64');
+
+    photoBase64Input.value = '';
+    video.style.display = 'inline-block';
+    preview.style.display = 'none';
+    document.getElementById('btnAmbilFoto').style.display = 'inline-block';
+    document.getElementById('btnUlangFoto').style.display = 'none';
+
+    hasPhoto = false;
+    checkSubmitEligibility();
+  }
+
+  // 3. Validasi Kelayakan Submit (GPS dan Foto wajib tersedia)
+  function checkSubmitEligibility() {
+    const submitBtn = document.getElementById('btnSubmitAttendance');
+    if (hasLocation && hasPhoto) {
+      submitBtn.removeAttribute('disabled');
+    } else {
+      submitBtn.setAttribute('disabled', 'disabled');
+    }
+  }
+
+  // Stop kamera jika modal ditutup
+  modalEl.addEventListener('hidden.coreui.modal', function () {
+    stopCamera();
+  });
+</script>
+{% endblock %}

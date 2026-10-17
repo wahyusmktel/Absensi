@@ -140,10 +140,16 @@
 
         <li class="nav-title">Operasional Presensi</li>
         <li class="nav-item">
-          <a class="nav-link text-secondary" href="#attendance-coming-soon" onclick="alert('Fitur modul presensi harian guru & siswa akan dibuka pada tahap selanjutnya.'); return false;">
-            <i class="fa-solid fa-clipboard-user nav-icon"></i>
-            Presensi Guru
-            <span class="badge badge-sm bg-warning text-dark ms-auto">Tahap 3</span>
+          <a class="nav-link {% if active_menu == 'attendance' %}active{% endif %}" href="/attendance">
+            <i class="fa-solid fa-camera-retro nav-icon"></i>
+            Absensi Guru di Kelas
+            <span class="badge badge-sm bg-danger ms-auto">Wajib GPS</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'attendance_history' %}active{% endif %}" href="/attendance/history">
+            <i class="fa-solid fa-clock-rotate-left nav-icon"></i>
+            Riwayat Absensi Guru
           </a>
         </li>
       </ul>

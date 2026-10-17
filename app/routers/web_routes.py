@@ -18,6 +18,7 @@ from app.api.deps import get_current_user_from_token
 from app.core.database import get_db
 from app.models.models import (
     AcademicYear,
+    AttendanceStatus,
     Classroom,
     DayOfWeek,
     DutyTeacher,
@@ -25,6 +26,7 @@ from app.models.models import (
     School,
     Subject,
     Teacher,
+    TeacherAttendance,
     User,
     UserRole,
 )
@@ -37,6 +39,7 @@ from app.services.academic_service import (
     SubjectService,
     TeacherService,
 )
+from app.services.attendance_service import AttendanceService
 from app.services.auth_service import AuthService
 
 router = APIRouter()
@@ -955,3 +958,180 @@ async def duty_teachers_delete(
 
     await DutyTeacherService.soft_delete(db, user.school_id, duty_id)
     return RedirectResponse(url="/duty-teachers?success_msg=Penugasan+piket+berhasil+dihapus+(Soft+Delete).", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ---------------------------------------------------------
+# 7. ABSENSI GURU DI KELAS (Foto & Auto Lokasi GPS)
+# ---------------------------------------------------------
+
+@router.get("/attendance", response_class=HTMLResponse)
+async def attendance_page(
+    request: Request,
+    teacher_id: Optional[str] = None,
+    success_msg: Optional[str] = None,
+    error_msg: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    if not active_ay:
+        return RedirectResponse(
+            url="/academic-years?error_msg=Harap+aktifkan+Tahun+Pelajaran+terlebih+dahulu+sebelum+melakukan+absensi.",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+
+    tid = UUID(teacher_id) if teacher_id else None
+    current_teacher = await AttendanceService.get_teacher_by_user_or_id(
+        db, user.school_id, user, selected_teacher_id=tid
+    )
+
+    teachers_list = await TeacherService.get_all_active(db, user.school_id)
+    today_date = datetime.now().date()
+    today_dow = AttendanceService.get_today_day_of_week(today_date)
+    today_day_name = today_dow.value if today_dow else "Minggu (Hari Libur)"
+
+    today_schedules = []
+    if current_teacher:
+        today_schedules = await AttendanceService.get_schedules_for_attendance(
+            db, user.school_id, academic_year_id=active_ay.id, teacher_id=current_teacher.id, target_date=today_date
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="attendance/index.html",
+        context={
+            "user": user,
+            "school": school,
+            "active_ay": active_ay,
+            "current_teacher": current_teacher,
+            "teachers_list": teachers_list,
+            "today_schedules": today_schedules,
+            "today_date": today_date,
+            "today_day_name": today_day_name,
+            "success_msg": success_msg,
+            "error_msg": error_msg,
+            "active_menu": "attendance",
+            "str": str,
+        }
+    )
+
+
+@router.post("/attendance/submit")
+async def attendance_submit(
+    request: Request,
+    schedule_id: str = Form(...),
+    teacher_id: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    photo_base64: Optional[str] = Form(None),
+    location_accuracy: Optional[float] = Form(None),
+    attendance_status: str = Form("Hadir", alias="status"),
+    teaching_material: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    device_info: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db)
+):
+    user, _ = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    if not active_ay:
+        return RedirectResponse(url="/academic-years", status_code=status.HTTP_303_SEE_OTHER)
+
+    # Validasi koordinat GPS (Wajib Aktif)
+    if latitude == 0.0 or longitude == 0.0 or latitude is None or longitude is None:
+        return RedirectResponse(
+            url="/attendance?error_msg=Gagal:+Koordinat+GPS+wajib+aktif+dan+terdeteksi+oleh+sistem.",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+
+    # Validasi Bukti Foto Kamera di Kelas
+    if not photo_base64 or len(photo_base64.strip()) < 50:
+        return RedirectResponse(
+            url="/attendance?error_msg=Gagal:+Wajib+mengambil+foto+bukti+kehadiran+di+dalam+kelas.",
+            status_code=status.HTTP_303_SEE_OTHER
+        )
+
+    att_status = AttendanceStatus(attendance_status) if attendance_status in [s.value for s in AttendanceStatus] else AttendanceStatus.HADIR
+
+    success, msg, _ = await AttendanceService.record_attendance(
+        db=db,
+        school_id=user.school_id,
+        academic_year_id=active_ay.id,
+        schedule_id=UUID(schedule_id),
+        teacher_id=UUID(teacher_id),
+        latitude=latitude,
+        longitude=longitude,
+        photo_base64=photo_base64,
+        location_accuracy=location_accuracy,
+        status=att_status,
+        teaching_material=teaching_material,
+        notes=notes,
+        device_info=device_info
+    )
+
+    if not success:
+        return RedirectResponse(url=f"/attendance?error_msg={msg}", status_code=status.HTTP_303_SEE_OTHER)
+
+    return RedirectResponse(url="/attendance?success_msg=Absensi+kehadiran+guru+di+kelas+berhasil+disimpan.", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/attendance/history", response_class=HTMLResponse)
+async def attendance_history_page(
+    request: Request,
+    page: int = 1,
+    filter_date: Optional[str] = None,
+    teacher_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    ay_id = active_ay.id if active_ay else None
+
+    f_date = datetime.strptime(filter_date, "%Y-%m-%d").date() if filter_date else None
+    t_id = UUID(teacher_id) if teacher_id else None
+
+    # Jika role guru biasa, otomatis batasi hanya melihat riwayat dirinya sendiri
+    if user.role == UserRole.GURU:
+        my_teacher = await AttendanceService.get_teacher_by_user_or_id(db, user.school_id, user)
+        if my_teacher:
+            t_id = my_teacher.id
+
+    attendances, total_count, total_pages = await AttendanceService.get_history(
+        db=db,
+        school_id=user.school_id,
+        academic_year_id=ay_id,
+        teacher_id=t_id,
+        filter_date=f_date,
+        page=page,
+        limit=10
+    )
+
+    teachers_list = await TeacherService.get_all_active(db, user.school_id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="attendance/history.html",
+        context={
+            "user": user,
+            "school": school,
+            "active_ay": active_ay,
+            "attendances": attendances,
+            "teachers_list": teachers_list,
+            "selected_date": filter_date or "",
+            "selected_teacher_id": teacher_id or "",
+            "page": page,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "active_menu": "attendance_history",
+            "str": str,
+            "range": range,
+        }
+    )

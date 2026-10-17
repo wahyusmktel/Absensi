@@ -13,6 +13,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum as SQLEnum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -46,6 +47,16 @@ class DayOfWeek(str, Enum):
     KAMIS = "Kamis"
     JUMAT = "Jumat"
     SABTU = "Sabtu"
+
+
+class AttendanceStatus(str, Enum):
+    """
+    Status kehadiran guru di kelas sesuai jadwal.
+    """
+    HADIR = "Hadir"
+    IZIN = "Izin"
+    SAKIT = "Sakit"
+    ALPA = "Alpa"
 
 
 class School(Base):
@@ -323,3 +334,49 @@ class DutyTeacher(Base):
     school = relationship("School", back_populates="duty_teachers")
     academic_year = relationship("AcademicYear", back_populates="duty_teachers")
     teacher = relationship("Teacher", back_populates="duty_assignments")
+
+
+class TeacherAttendance(Base):
+    """
+    Tabel data Presensi Kehadiran Guru di Kelas sesuai Jadwal Pelajaran.
+    Dilengkapi bukti foto kamera langsung di dalam kelas dan auto geolocation (GPS).
+    """
+    __tablename__ = "teacher_attendances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
+    academic_year_id = Column(UUID(as_uuid=True), ForeignKey("academic_years.id", ondelete="CASCADE"), nullable=False, index=True)
+    schedule_id = Column(UUID(as_uuid=True), ForeignKey("schedules.id", ondelete="CASCADE"), nullable=False, index=True)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    attendance_date = Column(Date, nullable=False, index=True)            # Tanggal presensi dilakukan
+    attendance_time = Column(Time, nullable=False)                         # Waktu presensi dicatat
+    status = Column(SQLEnum(AttendanceStatus), default=AttendanceStatus.HADIR, nullable=False)
+
+    # Bukti Kehadiran Visual (Foto Kamera di Kelas)
+    photo_url = Column(String(500), nullable=True)                        # Lokasi file foto bukti kehadiran
+
+    # Geolocation GPS Koordinat (Otomatis ditangkap oleh sistem)
+    latitude = Column(Float, nullable=False)                               # Titik Lintang GPS
+    longitude = Column(Float, nullable=False)                              # Titik Bujur GPS
+    location_accuracy = Column(Float, nullable=True)                       # Akurasi perangkat (dalam meter)
+    device_info = Column(String(255), nullable=True)                       # User Agent / Device info
+
+    teaching_material = Column(String(255), nullable=True)                 # Materi Pokok Pembelajaran
+    notes = Column(Text, nullable=True)                                    # Catatan jurnal guru di kelas
+
+    # Audit trail & Soft delete
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Relasi
+    school = relationship("School")
+    academic_year = relationship("AcademicYear")
+    schedule = relationship("Schedule")
+    teacher = relationship("Teacher")
