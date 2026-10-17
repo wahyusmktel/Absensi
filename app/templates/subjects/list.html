@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Mata Pelajaran - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Mata Pelajaran</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="fa-solid fa-book-open-reader text-primary me-2"></i> Data Mata Pelajaran</h3>
+      <p class="text-body-secondary small mb-0">Kelola daftar mata pelajaran (Mapel) kurikulum SMP</p>
+    </div>
+    <div>
+      <button class="btn btn-primary" data-coreui-toggle="modal" data-coreui-target="#modalTambahMapel">
+        <i class="fa-solid fa-plus me-1"></i> Tambah Mata Pelajaran
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span class="fw-bold"><i class="fa-solid fa-book me-1"></i> Total: {{ total_count }} Mata Pelajaran</span>
+    <form method="get" action="/subjects" class="d-flex gap-2" style="max-width: 300px;">
+      <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari mapel atau kode..." value="{{ search|default('') }}">
+      <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </form>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" style="width: 50px;" class="text-center">No</th>
+            <th scope="col">Kode Mapel</th>
+            <th scope="col">Nama Mata Pelajaran</th>
+            <th scope="col">Tingkat Kelas</th>
+            <th scope="col">Keterangan</th>
+            <th scope="col" class="text-center" style="width: 100px;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in subjects %}
+          <tr>
+            <td class="text-center text-secondary fw-semibold">{{ (page - 1) * 10 + loop.index }}</td>
+            <td class="fw-bold"><span class="badge bg-primary-subtle text-primary">{{ s.code }}</span></td>
+            <td class="fw-semibold text-dark">{{ s.name }}</td>
+            <td><span class="badge bg-secondary">Kelas {{ s.grade_level }}</span></td>
+            <td>{{ s.description or '-' }}</td>
+            <td class="text-center">
+              <form action="/subjects/{{ s.id }}/delete" method="post" class="d-inline" onsubmit="return confirm('Hapus data mata pelajaran ini? (Soft Delete)');">
+                <button type="submit" class="btn btn-outline-danger btn-sm" title="Hapus Mapel">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center py-4 text-secondary">
+              Belum ada data Mata Pelajaran. Klik 'Tambah Mata Pelajaran' untuk menambahkan.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Paginasi 10 data -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center py-3">
+    <div class="small text-secondary">Halaman {{ page }} dari {{ total_pages }}</div>
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/subjects?page={{ page - 1 }}&search={{ search|default('') }}">Sebelumnya</a>
+      </li>
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="/subjects?page={{ p }}&search={{ search|default('') }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/subjects?page={{ page + 1 }}&search={{ search|default('') }}">Selanjutnya</a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal Tambah Mata Pelajaran -->
+<div class="modal fade" id="modalTambahMapel" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-book-medical text-primary me-2"></i> Tambah Mata Pelajaran</h5>
+        <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/subjects" method="post">
+        <div class="modal-body row g-3">
+          <div class="col-md-5">
+            <label class="form-label fw-semibold">Kode Mapel <span class="text-danger">*</span></label>
+            <input type="text" class="form-control text-uppercase" name="code" placeholder="Contoh: MAT, IPA" required>
+          </div>
+          <div class="col-md-7">
+            <label class="form-label fw-semibold">Tingkat Kelas</label>
+            <select class="form-select" name="grade_level">
+              <option value="Semua">Semua Jenjang (VII, VIII, IX)</option>
+              <option value="VII">Kelas VII (Tujuh)</option>
+              <option value="VIII">Kelas VIII (Delapan)</option>
+              <option value="IX">Kelas IX (Sembilan)</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nama Mata Pelajaran <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="name" placeholder="Contoh: Matematika, Bahasa Indonesia" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Deskripsi / Keterangan</label>
+            <textarea class="form-control" name="description" rows="2" placeholder="Keterangan muatan kurikulum (opsional)..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Simpan Mapel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

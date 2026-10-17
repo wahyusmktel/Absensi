@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Data Guru - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Data Guru</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="fa-solid fa-chalkboard-user text-primary me-2"></i> Data Guru</h3>
+      <p class="text-body-secondary small mb-0">Kelola master data pendidik dan staf pengajar sekolah</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" data-coreui-toggle="modal" data-coreui-target="#modalTambahGuru">
+        <i class="fa-solid fa-user-plus me-1"></i> Tambah Guru
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span class="fw-bold"><i class="fa-solid fa-users me-1"></i> Total: {{ total_count }} Guru</span>
+    <form method="get" action="/teachers" class="d-flex gap-2" style="max-width: 300px;">
+      <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari nama atau NIP..." value="{{ search|default('') }}">
+      <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </form>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" style="width: 50px;" class="text-center">No</th>
+            <th scope="col">Nama Lengkap & Gelar</th>
+            <th scope="col">NIP / NUPTK</th>
+            <th scope="col">L/P</th>
+            <th scope="col">Status Kepegawaian</th>
+            <th scope="col">No. WhatsApp / HP</th>
+            <th scope="col">Email</th>
+            <th scope="col" class="text-center" style="width: 100px;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in teachers %}
+          <tr>
+            <td class="text-center text-secondary fw-semibold">{{ (page - 1) * 10 + loop.index }}</td>
+            <td class="fw-semibold text-primary">
+              <i class="fa-solid fa-user me-2 text-secondary"></i>{{ t.name }}
+            </td>
+            <td>{{ t.nip or '-' }}</td>
+            <td>
+              {% if t.gender == 'L' %}
+                <span class="badge bg-info-subtle text-info fw-semibold">Laki-laki</span>
+              {% elif t.gender == 'P' %}
+                <span class="badge bg-danger-subtle text-danger fw-semibold">Perempuan</span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td><span class="badge bg-secondary">{{ t.employment_status or 'PNS' }}</span></td>
+            <td>{{ t.phone or '-' }}</td>
+            <td>{{ t.email or '-' }}</td>
+            <td class="text-center">
+              <form action="/teachers/{{ t.id }}/delete" method="post" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data guru ini? (Soft Delete)');">
+                <button type="submit" class="btn btn-outline-danger btn-sm" title="Hapus Data">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-4 text-secondary">
+              Belum ada data Guru. Klik tombol 'Tambah Guru' untuk mendaftar.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Paginasi 10 data -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center py-3">
+    <div class="small text-secondary">Halaman {{ page }} dari {{ total_pages }}</div>
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/teachers?page={{ page - 1 }}&search={{ search|default('') }}">Sebelumnya</a>
+      </li>
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="/teachers?page={{ p }}&search={{ search|default('') }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/teachers?page={{ page + 1 }}&search={{ search|default('') }}">Selanjutnya</a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal Tambah Guru -->
+<div class="modal fade" id="modalTambahGuru" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus text-primary me-2"></i> Tambah Data Guru Baru</h5>
+        <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/teachers" method="post">
+        <div class="modal-body row g-3">
+          <div class="col-md-7">
+            <label class="form-label fw-semibold">Nama Lengkap & Gelar <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="name" placeholder="Contoh: Dra. Hj. Siti Aminah, M.Pd" required>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label fw-semibold">NIP / NUPTK</label>
+            <input type="text" class="form-control" name="nip" placeholder="198001012005012001">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Jenis Kelamin</label>
+            <select class="form-select" name="gender">
+              <option value="L">Laki-laki</option>
+              <option value="P">Perempuan</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Status Kepegawaian</label>
+            <select class="form-select" name="employment_status">
+              <option value="PNS">PNS</option>
+              <option value="PPPK">PPPK</option>
+              <option value="GTT / Honorer">GTT / Honorer</option>
+              <option value="Guru Tetap Yayasan">Guru Tetap Yayasan</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">No. WhatsApp / HP</label>
+            <input type="text" class="form-control" name="phone" placeholder="081234567890">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Alamat Email</label>
+            <input type="email" class="form-control" name="email" placeholder="guru@smp.sch.id">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Alamat Tempat Tinggal</label>
+            <input type="text" class="form-control" name="address" placeholder="Kota / Kabupaten">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Simpan Data Guru</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

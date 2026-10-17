@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Daftar Sekolah - PresensiPintar{% endblock %}
+{% block title %}Data Sekolah - PresensiPintar{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
@@ -11,7 +11,7 @@
 <div class="row mb-4">
   <div class="col-12 d-flex justify-content-between align-items-center">
     <div>
-      <h3 class="fw-bold mb-1">Data Sekolah Terdaftar</h3>
+      <h3 class="fw-bold mb-1"><i class="fa-solid fa-school-flag text-primary me-2"></i> Data Sekolah Terdaftar</h3>
       <p class="text-body-secondary small mb-0">Daftar seluruh sekolah yang menggunakan platform PresensiPintar</p>
     </div>
   </div>
@@ -19,7 +19,7 @@
 
 <div class="card shadow-sm border-0 mb-4">
   <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
-    <span class="fw-bold">Total Terdaftar: {{ total_count }} Sekolah</span>
+    <span class="fw-bold"><i class="fa-solid fa-list-check me-1"></i> Total Terdaftar: {{ total_count }} Sekolah</span>
     <span class="badge bg-primary">Paginasi 10 Data / Halaman</span>
   </div>
   <div class="card-body p-0">
@@ -28,7 +28,6 @@
         <thead class="table-light">
           <tr>
             <th scope="col" style="width: 50px;" class="text-center">No</th>
-            <th scope="col">UUID</th>
             <th scope="col">NPSN</th>
             <th scope="col">Nama Sekolah</th>
             <th scope="col">Jenjang</th>
@@ -38,26 +37,25 @@
           </tr>
         </thead>
         <tbody>
-          {% for school in schools %}
+          {% for sc in schools %}
           <tr>
-            <td class="text-center">{{ (page - 1) * 10 + loop.index }}</td>
-            <td><code>{{ str(school.id)[:8] }}...</code></td>
-            <td class="fw-bold text-primary">{{ school.npsn }}</td>
-            <td class="fw-semibold">{{ school.name }}</td>
-            <td><span class="badge bg-secondary">{{ school.education_level }}</span></td>
-            <td>{{ school.phone or '-' }}</td>
-            <td>{{ school.email or '-' }}</td>
+            <td class="text-center fw-semibold text-secondary">{{ (page - 1) * 10 + loop.index }}</td>
+            <td class="fw-bold text-primary">{{ sc.npsn }}</td>
+            <td class="fw-semibold">{{ sc.name }}</td>
+            <td><span class="badge bg-secondary">{{ sc.education_level }}</span></td>
+            <td>{{ sc.phone or '-' }}</td>
+            <td>{{ sc.email or '-' }}</td>
             <td class="text-center">
-              {% if school.is_active %}
-              <span class="badge bg-success">Aktif</span>
+              {% if sc.is_active %}
+              <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> Aktif</span>
               {% else %}
-              <span class="badge bg-danger">Nonaktif</span>
+              <span class="badge bg-danger"><i class="fa-solid fa-xmark me-1"></i> Nonaktif</span>
               {% endif %}
             </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="8" class="text-center py-4 text-secondary">
+            <td colspan="7" class="text-center py-4 text-secondary">
               Belum ada data sekolah yang terdaftar.
             </td>
           </tr>

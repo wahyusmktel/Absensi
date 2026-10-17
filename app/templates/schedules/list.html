@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Jadwal Pelajaran - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Jadwal Pelajaran</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> Jadwal Pelajaran</h3>
+      <p class="text-body-secondary small mb-0">
+        Jadwal pelajaran aktif Tahun Ajaran: 
+        <strong>{{ active_ay.name }} ({{ active_ay.semester }})</strong>
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/schedules/print{% if selected_class_id %}?classroom_id={{ selected_class_id }}{% endif %}" target="_blank" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-print me-1"></i> Cetak Jadwal Pelajaran
+      </a>
+      <button class="btn btn-primary" data-coreui-toggle="modal" data-coreui-target="#modalTambahJadwal">
+        <i class="fa-solid fa-plus me-1"></i> Atur Jadwal Baru
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Kelas & Hari -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <form method="get" action="/schedules" class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label small fw-semibold text-secondary">Filter Berdasarkan Kelas</label>
+        <select class="form-select form-select-sm" name="classroom_id">
+          <option value="">-- Semua Kelas / Rombel --</option>
+          {% for cl in classrooms_list %}
+          <option value="{{ cl.id }}" {% if selected_class_id == str(cl.id) %}selected{% endif %}>
+            {{ cl.name }} (Jenjang {{ cl.grade_level }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold text-secondary">Filter Hari</label>
+        <select class="form-select form-select-sm" name="day_of_week">
+          <option value="">-- Semua Hari --</option>
+          {% for d in days_list %}
+          <option value="{{ d.value }}" {% if selected_day == d.value %}selected{% endif %}>
+            {{ d.value }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-sm btn-primary w-100">
+          <i class="fa-solid fa-filter me-1"></i> Terapkan Filter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+    <span class="fw-bold"><i class="fa-solid fa-calendar-check me-1"></i> Total Sesi: {{ total_count }} Jadwal</span>
+    <span class="badge bg-primary">Paginasi 10 Data / Halaman</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" style="width: 50px;" class="text-center">No</th>
+            <th scope="col">Hari</th>
+            <th scope="col">Waktu Belajar</th>
+            <th scope="col">Kelas</th>
+            <th scope="col">Mata Pelajaran</th>
+            <th scope="col">Guru Pengampu</th>
+            <th scope="col">Keterangan</th>
+            <th scope="col" class="text-center" style="width: 90px;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sc in schedules %}
+          <tr>
+            <td class="text-center text-secondary fw-semibold">{{ (page - 1) * 10 + loop.index }}</td>
+            <td class="fw-bold text-primary">{{ sc.day_of_week.value }}</td>
+            <td>
+              <span class="badge bg-light text-dark border">
+                <i class="fa-regular fa-clock me-1 text-primary"></i>
+                {{ sc.start_time.strftime('%H:%M') }} - {{ sc.end_time.strftime('%H:%M') }}
+              </span>
+            </td>
+            <td class="fw-semibold">{{ sc.classroom.name }}</td>
+            <td>
+              <div class="fw-semibold">{{ sc.subject.name }}</div>
+              <small class="text-secondary">{{ sc.subject.code }}</small>
+            </td>
+            <td>
+              <i class="fa-solid fa-chalkboard-user text-secondary me-1"></i>
+              {{ sc.teacher.name }}
+            </td>
+            <td>{{ sc.notes or '-' }}</td>
+            <td class="text-center">
+              <form action="/schedules/{{ sc.id }}/delete" method="post" class="d-inline" onsubmit="return confirm('Hapus jadwal pelajaran ini? (Soft Delete)');">
+                <button type="submit" class="btn btn-outline-danger btn-sm" title="Hapus Jadwal">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-4 text-secondary">
+              Belum ada Jadwal Pelajaran yang terdata. Silakan klik 'Atur Jadwal Baru'.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Paginasi 10 data -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center py-3">
+    <div class="small text-secondary">Halaman {{ page }} dari {{ total_pages }}</div>
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/schedules?page={{ page - 1 }}&classroom_id={{ selected_class_id|default('') }}&day_of_week={{ selected_day|default('') }}">Sebelumnya</a>
+      </li>
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="/schedules?page={{ p }}&classroom_id={{ selected_class_id|default('') }}&day_of_week={{ selected_day|default('') }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/schedules?page={{ page + 1 }}&classroom_id={{ selected_class_id|default('') }}&day_of_week={{ selected_day|default('') }}">Selanjutnya</a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal Tambah Jadwal Pelajaran -->
+<div class="modal fade" id="modalTambahJadwal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-calendar-plus text-primary me-2"></i> Atur Jadwal Pelajaran Baru</h5>
+        <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/schedules" method="post">
+        <div class="modal-body row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Pilih Kelas / Rombel <span class="text-danger">*</span></label>
+            <select class="form-select" name="classroom_id" required>
+              <option value="">-- Pilih Kelas --</option>
+              {% for cl in classrooms_list %}
+              <option value="{{ cl.id }}">{{ cl.name }} (Jenjang {{ cl.grade_level }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Pilih Hari <span class="text-danger">*</span></label>
+            <select class="form-select" name="day_of_week" required>
+              {% for d in days_list %}
+              <option value="{{ d.value }}">{{ d.value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Pilih Mata Pelajaran <span class="text-danger">*</span></label>
+            <select class="form-select" name="subject_id" required>
+              <option value="">-- Pilih Mapel --</option>
+              {% for s in subjects_list %}
+              <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Pilih Guru Pengampu <span class="text-danger">*</span></label>
+            <select class="form-select" name="teacher_id" required>
+              <option value="">-- Pilih Guru --</option>
+              {% for t in teachers_list %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Jam Mulai <span class="text-danger">*</span></label>
+            <input type="time" class="form-control" name="start_time" value="07:30" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Jam Selesai <span class="text-danger">*</span></label>
+            <input type="time" class="form-control" name="end_time" value="09:00" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Catatan / Ruang Laboratorium</label>
+            <input type="text" class="form-control" name="notes" placeholder="Contoh: Lab Komputer 1 / Ruang Musik">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Simpan Jadwal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

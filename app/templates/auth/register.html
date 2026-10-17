@@ -7,10 +7,11 @@
     <title>Pendaftaran Sekolah Baru - PresensiPintar</title>
     <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon/favicon-32x32.png">
     
-    <!-- CoreUI styles -->
+    <!-- CoreUI & Font Awesome styles -->
     <link rel="stylesheet" href="/static/vendors/simplebar/css/simplebar.css">
     <link rel="stylesheet" href="/static/css/vendors/simplebar.css">
     <link href="/static/css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="/static/js/config.js"></script>
     <script src="/static/js/color-modes.js"></script>
   </head>
@@ -21,11 +22,8 @@
           
           <!-- Logo & Brand Header -->
           <div class="text-center mb-2">
-            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle p-3 mb-2 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 512 512">
-                <path d="M464 64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V112c0-26.51-21.49-48-48-48zm16 336c0 8.822-7.178 16-16 16H48c-8.822 0-16-7.178-16-16V112c0-8.822 7.178-16 16-16h416c8.822 0 16 7.178 16 16v288z"/>
-                <path d="M128 176h256v32H128zm0 64h256v32H128zm0 64h160v32H128z"/>
-              </svg>
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle p-3 mb-2 shadow-sm" style="width: 64px; height: 64px;">
+              <i class="fa-solid fa-graduation-cap fa-2x"></i>
             </div>
             <h1 class="h3 fw-bold mb-1">PresensiPintar</h1>
             <p class="text-body-secondary small">Formulir Pendaftaran Registrasi Sekolah Menengah Pertama</p>
@@ -34,7 +32,7 @@
           <!-- Alert Pesan Error -->
           {% if error_msg %}
           <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Gagal:</strong> {{ error_msg }}
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> <strong>Gagal:</strong> {{ error_msg }}
             <button type="button" class="btn-close" data-coreui-dismiss="alert" aria-label="Close"></button>
           </div>
           {% endif %}
@@ -46,7 +44,7 @@
                 <!-- BAGIAN 1: PROFIL SEKOLAH -->
                 <div class="col-12 border-bottom pb-2 mb-2">
                   <h5 class="fw-bold text-primary mb-1">
-                    🏫 Data Identitas Sekolah
+                    <i class="fa-solid fa-school me-2"></i> Data Identitas Sekolah
                   </h5>
                   <span class="text-body-secondary small">Pastikan NPSN sesuai dengan data Dapodik resmi Kemendikbud</span>
                 </div>
@@ -80,7 +78,7 @@
                 <!-- BAGIAN 2: AKUN OPERATOR SEKOLAH -->
                 <div class="col-12 border-bottom pb-2 mb-2 mt-4">
                   <h5 class="fw-bold text-primary mb-1">
-                    👤 Data Akun Operator / Admin Sekolah
+                    <i class="fa-solid fa-user-gear me-2"></i> Data Akun Operator / Admin Sekolah
                   </h5>
                   <span class="text-body-secondary small">Akun ini akan bertindak sebagai Administrator utama untuk sekolah yang bersangkutan</span>
                 </div>
@@ -114,7 +112,7 @@
 
                 <div class="col-12 mt-4">
                   <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit">
-                    Daftarkan Sekolah & Buat Akun
+                    <i class="fa-solid fa-paper-plane me-1"></i> Daftarkan Sekolah & Buat Akun
                   </button>
                 </div>
               </form>
