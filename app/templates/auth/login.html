@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Masuk - PresensiPintar Absensi SMP</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon/favicon-32x32.png">
+    
+    <!-- CoreUI styles -->
+    <link rel="stylesheet" href="/static/vendors/simplebar/css/simplebar.css">
+    <link rel="stylesheet" href="/static/css/vendors/simplebar.css">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/color-modes.js"></script>
+  </head>
+  <body>
+    <div class="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
+      <div class="container" style="max-width: 32rem">
+        <div class="d-flex flex-column gap-3">
+          
+          <!-- Logo & Brand Header -->
+          <div class="text-center mb-2">
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle p-3 mb-2 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 512 512">
+                <path d="M464 64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V112c0-26.51-21.49-48-48-48zm16 336c0 8.822-7.178 16-16 16H48c-8.822 0-16-7.178-16-16V112c0-8.822 7.178-16 16-16h416c8.822 0 16 7.178 16 16v288z"/>
+                <path d="M128 176h256v32H128zm0 64h256v32H128zm0 64h160v32H128z"/>
+              </svg>
+            </div>
+            <h1 class="h3 fw-bold mb-1">PresensiPintar</h1>
+            <p class="text-body-secondary small">Sistem Presensi Sekolah Menengah Pertama (Multi-Tenant)</p>
+          </div>
+
+          <!-- Alert Pesan Sukses / Error -->
+          {% if success_msg %}
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Sukses!</strong> {{ success_msg }}
+            <button type="button" class="btn-close" data-coreui-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endif %}
+
+          {% if error_msg %}
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Gagal:</strong> {{ error_msg }}
+            <button type="button" class="btn-close" data-coreui-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endif %}
+
+          <div class="card p-3 shadow-sm border-0">
+            <div class="card-body d-flex flex-column gap-3">
+              <div class="text-center">
+                <h2 class="h5 fw-bold mb-1">Masuk ke Akun Anda</h2>
+                <p class="text-body-secondary small mb-0">Gunakan akun yang telah didaftarkan</p>
+              </div>
+
+              <form class="row g-3" action="/login" method="post" autocomplete="off">
+                <div class="col-12">
+                  <label class="form-label fw-semibold" for="email">Alamat Email</label>
+                  <input class="form-control" id="email" name="email" type="email" placeholder="contoh: operator@smpn1.sch.id" required autofocus value="{{ email|default('') }}">
+                </div>
+
+                <div class="col-12">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label fw-semibold mb-0" for="password">Kata Sandi</label>
+                  </div>
+                  <div class="input-group">
+                    <input class="form-control" id="password" name="password" type="password" placeholder="Masukkan kata sandi" required>
+                    <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">
+                      👁️
+                    </button>
+                  </div>
+                </div>
+
+                <div class="col-12 mt-2">
+                  <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit">
+                    Masuk Sekarang
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card bg-body-tertiary border-0 text-center p-3">
+            <div class="text-body-secondary mb-2">
+              Sekolah Anda belum terdaftar di sistem?
+            </div>
+            <div>
+              <a class="btn btn-outline-primary btn-sm px-4 fw-semibold" href="/register">
+                Daftarkan Sekolah Baru
+              </a>
+            </div>
+          </div>
+
+          <div class="text-center text-body-tertiary small">
+            &copy; 2026 PresensiPintar. Aman & Terenkripsi.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts CoreUI -->
+    <script src="/static/vendors/@coreui/coreui/js/coreui.bundle.min.js"></script>
+    <script>
+      const toggleBtn = document.getElementById('togglePasswordBtn');
+      const passwordInput = document.getElementById('password');
+      if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', () => {
+          const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+          passwordInput.setAttribute('type', type);
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Daftar Sekolah - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Data Sekolah</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="fw-bold mb-1">Data Sekolah Terdaftar</h3>
+      <p class="text-body-secondary small mb-0">Daftar seluruh sekolah yang menggunakan platform PresensiPintar</p>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+    <span class="fw-bold">Total Terdaftar: {{ total_count }} Sekolah</span>
+    <span class="badge bg-primary">Paginasi 10 Data / Halaman</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" style="width: 50px;" class="text-center">No</th>
+            <th scope="col">UUID</th>
+            <th scope="col">NPSN</th>
+            <th scope="col">Nama Sekolah</th>
+            <th scope="col">Jenjang</th>
+            <th scope="col">No. Telepon</th>
+            <th scope="col">Email</th>
+            <th scope="col" class="text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for school in schools %}
+          <tr>
+            <td class="text-center">{{ (page - 1) * 10 + loop.index }}</td>
+            <td><code>{{ str(school.id)[:8] }}...</code></td>
+            <td class="fw-bold text-primary">{{ school.npsn }}</td>
+            <td class="fw-semibold">{{ school.name }}</td>
+            <td><span class="badge bg-secondary">{{ school.education_level }}</span></td>
+            <td>{{ school.phone or '-' }}</td>
+            <td>{{ school.email or '-' }}</td>
+            <td class="text-center">
+              {% if school.is_active %}
+              <span class="badge bg-success">Aktif</span>
+              {% else %}
+              <span class="badge bg-danger">Nonaktif</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-4 text-secondary">
+              Belum ada data sekolah yang terdaftar.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Paginasi 10 data per halaman -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center py-3">
+    <div class="small text-secondary">
+      Menampilkan halaman {{ page }} dari {{ total_pages }}
+    </div>
+    <nav aria-label="Page navigation">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+          <a class="page-link" href="/schools?page={{ page - 1 }}">Sebelumnya</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="/schools?page={{ p }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+          <a class="page-link" href="/schools?page={{ page + 1 }}">Selanjutnya</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

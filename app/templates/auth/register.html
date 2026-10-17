@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Pendaftaran Sekolah Baru - PresensiPintar</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon/favicon-32x32.png">
+    
+    <!-- CoreUI styles -->
+    <link rel="stylesheet" href="/static/vendors/simplebar/css/simplebar.css">
+    <link rel="stylesheet" href="/static/css/vendors/simplebar.css">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/color-modes.js"></script>
+  </head>
+  <body>
+    <div class="bg-body-tertiary min-vh-100 py-5 d-flex flex-row align-items-center">
+      <div class="container" style="max-width: 44rem">
+        <div class="d-flex flex-column gap-3">
+          
+          <!-- Logo & Brand Header -->
+          <div class="text-center mb-2">
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle p-3 mb-2 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 512 512">
+                <path d="M464 64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V112c0-26.51-21.49-48-48-48zm16 336c0 8.822-7.178 16-16 16H48c-8.822 0-16-7.178-16-16V112c0-8.822 7.178-16 16-16h416c8.822 0 16 7.178 16 16v288z"/>
+                <path d="M128 176h256v32H128zm0 64h256v32H128zm0 64h160v32H128z"/>
+              </svg>
+            </div>
+            <h1 class="h3 fw-bold mb-1">PresensiPintar</h1>
+            <p class="text-body-secondary small">Formulir Pendaftaran Registrasi Sekolah Menengah Pertama</p>
+          </div>
+
+          <!-- Alert Pesan Error -->
+          {% if error_msg %}
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Gagal:</strong> {{ error_msg }}
+            <button type="button" class="btn-close" data-coreui-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endif %}
+
+          <div class="card p-4 shadow-sm border-0">
+            <div class="card-body">
+              <form class="row g-3" action="/register" method="post" autocomplete="off">
+                
+                <!-- BAGIAN 1: PROFIL SEKOLAH -->
+                <div class="col-12 border-bottom pb-2 mb-2">
+                  <h5 class="fw-bold text-primary mb-1">
+                    🏫 Data Identitas Sekolah
+                  </h5>
+                  <span class="text-body-secondary small">Pastikan NPSN sesuai dengan data Dapodik resmi Kemendikbud</span>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="school_npsn">NPSN Sekolah <span class="text-danger">*</span></label>
+                  <input class="form-control" id="school_npsn" name="school_npsn" type="text" placeholder="Contoh: 20101234" required value="{{ form.school_npsn if form else '' }}">
+                  <div class="form-text">Nomor Pokok Sekolah Nasional (8 digit).</div>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="school_name">Nama Sekolah <span class="text-danger">*</span></label>
+                  <input class="form-control" id="school_name" name="school_name" type="text" placeholder="Contoh: SMP Negeri 1 Jakarta" required value="{{ form.school_name if form else '' }}">
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label fw-semibold" for="school_address">Alamat Lengkap Sekolah</label>
+                  <textarea class="form-control" id="school_address" name="school_address" rows="2" placeholder="Jl. Pendidikan No. 1, Kecamatan...">{{ form.school_address if form else '' }}</textarea>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="school_phone">Nomor Telepon Sekolah</label>
+                  <input class="form-control" id="school_phone" name="school_phone" type="text" placeholder="(021) 1234567" value="{{ form.school_phone if form else '' }}">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="school_email">Email Resmi Sekolah</label>
+                  <input class="form-control" id="school_email" name="school_email" type="email" placeholder="info@smpn1.sch.id" value="{{ form.school_email if form else '' }}">
+                </div>
+
+                <!-- BAGIAN 2: AKUN OPERATOR SEKOLAH -->
+                <div class="col-12 border-bottom pb-2 mb-2 mt-4">
+                  <h5 class="fw-bold text-primary mb-1">
+                    👤 Data Akun Operator / Admin Sekolah
+                  </h5>
+                  <span class="text-body-secondary small">Akun ini akan bertindak sebagai Administrator utama untuk sekolah yang bersangkutan</span>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="operator_name">Nama Lengkap Operator <span class="text-danger">*</span></label>
+                  <input class="form-control" id="operator_name" name="operator_name" type="text" placeholder="Contoh: Budi Santoso, S.Kom" required value="{{ form.operator_name if form else '' }}">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="operator_nip">NIP / NUPTK (Opsional)</label>
+                  <input class="form-control" id="operator_nip" name="operator_nip" type="text" placeholder="Contoh: 198501012010011001" value="{{ form.operator_nip if form else '' }}">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="operator_email">Email Akun Login <span class="text-danger">*</span></label>
+                  <input class="form-control" id="operator_email" name="operator_email" type="email" placeholder="operator@smpn1.sch.id" required value="{{ form.operator_email if form else '' }}">
+                  <div class="form-text">Digunakan untuk login ke sistem.</div>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="operator_phone">Nomor WhatsApp / HP</label>
+                  <input class="form-control" id="operator_phone" name="operator_phone" type="text" placeholder="081234567890" value="{{ form.operator_phone if form else '' }}">
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label fw-semibold" for="operator_password">Kata Sandi (Password) <span class="text-danger">*</span></label>
+                  <input class="form-control" id="operator_password" name="operator_password" type="password" placeholder="Minimal 8 karakter (kombinasi huruf & angka)" required minlength="8">
+                  <div class="form-text">Password dienkripsi dengan algoritma bcrypt tingkat industri.</div>
+                </div>
+
+                <div class="col-12 mt-4">
+                  <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit">
+                    Daftarkan Sekolah & Buat Akun
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="text-center text-body-secondary">
+            Sudah memiliki akun terdaftar?
+            <a class="fw-semibold text-primary" href="/login">Masuk ke Sistem</a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts CoreUI -->
+    <script src="/static/vendors/@coreui/coreui/js/coreui.bundle.min.js"></script>
+  </body>
+</html>

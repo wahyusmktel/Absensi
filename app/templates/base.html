@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="description" content="PresensiPintar - Sistem Absensi SMP Terpadu">
+    <title>{% block title %}PresensiPintar - Absensi SMP{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon/favicon-32x32.png">
+    
+    <!-- CoreUI & Plugins CSS -->
+    <link rel="stylesheet" href="/static/vendors/simplebar/css/simplebar.css">
+    <link rel="stylesheet" href="/static/css/vendors/simplebar.css">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/color-modes.js"></script>
+    
+    <!-- CoreUI Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@coreui/icons@3.0.1/css/free.min.css">
+    <style>
+      .app-brand-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        color: inherit;
+        font-weight: 700;
+        font-size: 1.25rem;
+      }
+      .badge-role {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    </style>
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <div class="sidebar sidebar-dark sidebar-fixed border-end" id="sidebar">
+      <div class="sidebar-header border-bottom">
+        <div class="sidebar-brand me-auto">
+          <a href="/dashboard" class="app-brand-logo text-white">
+            <svg class="icon icon-lg text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="28" height="28">
+              <path fill="currentColor" d="M464 64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V112c0-26.51-21.49-48-48-48zm16 336c0 8.822-7.178 16-16 16H48c-8.822 0-16-7.178-16-16V112c0-8.822 7.178-16 16-16h416c8.822 0 16 7.178 16 16v288z"/>
+              <path fill="currentColor" d="M128 176h256v32H128zm0 64h256v32H128zm0 64h160v32H128z"/>
+            </svg>
+            <span>PresensiPintar</span>
+          </a>
+        </div>
+        <button class="btn-close d-lg-none" type="button" data-coreui-theme="dark" aria-label="Close" onclick="coreui.Sidebar.getInstance(document.querySelector('#sidebar')).toggle()"></button>
+      </div>
+
+      <ul class="sidebar-nav" data-coreui="navigation" data-simplebar>
+        <li class="nav-item">
+          <a class="nav-link active" href="/dashboard">
+            <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+              <path fill="currentColor" d="M425.706 142.294A240 240 0 0 0 16 312v88h144v-32H48v-56c0-114.691 93.309-208 208-208s208 93.309 208 208v56H352v32h144v-88a238.43 238.43 0 0 0-70.294-169.706M256 416a32 32 0 1 1 32-32 32.036 32.036 0 0 1-32 32"/>
+            </svg>
+            Dashboard
+          </a>
+        </li>
+
+        <li class="nav-title">Menu Utama</li>
+
+        {% if user.role.value == 'superadmin' %}
+        <li class="nav-item">
+          <a class="nav-link" href="/schools">
+            <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+              <path fill="currentColor" d="M256 32 32 160v64h448v-64L256 32zm0 48 160 80H96l160-80zM64 256h64v192H64zm128 0h64v192h-64zm128 0h64v192h-64zm128 0h64v192h-64z"/>
+            </svg>
+            Data Sekolah
+            <span class="badge badge-sm bg-success ms-auto">Multi-Tenant</span>
+          </a>
+        </li>
+        {% endif %}
+
+        <li class="nav-item">
+          <a class="nav-link" href="#attendance-coming-soon" onclick="alert('Fitur pencatatan presensi akan dibuka pada tahap selanjutnya.'); return false;">
+            <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+              <path fill="currentColor" d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 464c-119.29 0-216-96.71-216-216S136.71 40 256 40s216 96.71 216 216-96.71 216-216 216zm16-304h-32v120l96 57.6 16-26.7-79.9-47.9V168z"/>
+            </svg>
+            Presensi Guru
+            <span class="badge badge-sm bg-warning text-dark ms-auto">Tahap 2</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="#reports-coming-soon" onclick="alert('Fitur laporan export Excel dan PDF akan dibuka pada tahap selanjutnya.'); return false;">
+            <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+              <path fill="currentColor" d="M368 224V32H80v448h352V224h-64zm32 224H112V64h224v160h64v224zM160 384h192v32H160zm0-64h192v32H160zm0-64h128v32H160z"/>
+            </svg>
+            Laporan & Rekap
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer border-top d-none d-md-flex p-2 text-center text-secondary small">
+        PresensiPintar v1.0.0
+      </div>
+    </div>
+
+    <!-- Wrapper Konten Utama -->
+    <div class="wrapper d-flex flex-column min-vh-100 bg-light dark:bg-transparent">
+      <!-- Header / Navbar Atas -->
+      <header class="header header-sticky mb-4 p-0 border-bottom">
+        <div class="container-fluid border-bottom px-4">
+          <button class="header-toggler" type="button" onclick="coreui.Sidebar.getInstance(document.querySelector('#sidebar')).toggle()" style="margin-inline-start: -14px;">
+            <svg class="icon icon-lg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+              <path fill="currentColor" d="M64 128h384v32H64zm0 112h384v32H64zm0 112h384v32H64z"/>
+            </svg>
+          </button>
+
+          <ul class="header-nav d-none d-lg-flex">
+            <li class="nav-item">
+              <span class="nav-link fw-semibold text-primary">
+                {% if school %}
+                  🏫 {{ school.name }} (NPSN: {{ school.npsn }})
+                {% else %}
+                  🌐 Portal Pusat Super Administrator
+                {% endif %}
+              </span>
+            </li>
+          </ul>
+
+          <ul class="header-nav ms-auto align-items-center">
+            <!-- Pengatur Tema Terang / Gelap CoreUI -->
+            <li class="nav-item dropdown">
+              <button class="btn btn-link nav-link py-2 px-2 d-flex align-items-center" type="button" aria-expanded="false" data-coreui-toggle="dropdown">
+                <svg class="icon icon-lg theme-icon-active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                  <path fill="currentColor" d="M256 160c-52.935 0-96 43.065-96 96s43.065 96 96 96 96-43.065 96-96-43.065-96-96-96zm0 160c-35.29 0-64-28.71-64-64s28.71-64 64-64 64 28.71 64 64-28.71 64-64 64z"/>
+                </svg>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end" style="--cui-dropdown-min-width: 8rem;">
+                <li><button class="dropdown-item d-flex align-items-center active" type="button" data-coreui-theme-value="light">Light</button></li>
+                <li><button class="dropdown-item d-flex align-items-center" type="button" data-coreui-theme-value="dark">Dark</button></li>
+                <li><button class="dropdown-item d-flex align-items-center" type="button" data-coreui-theme-value="auto">Auto</button></li>
+              </ul>
+            </li>
+
+            <!-- User Menu -->
+            <li class="nav-item dropdown ms-2">
+              <a class="nav-link py-0 pe-0" data-coreui-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+                <div class="avatar avatar-md bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle">
+                  {{ user.full_name[:2].upper() }}
+                </div>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end pt-0 shadow-sm" style="min-width: 14rem;">
+                <div class="dropdown-header bg-body-tertiary text-body-secondary fw-semibold rounded-top mb-2">
+                  Akun Masuk
+                </div>
+                <div class="px-3 py-1">
+                  <div class="fw-bold">{{ user.full_name }}</div>
+                  <small class="text-secondary d-block">{{ user.email }}</small>
+                  <span class="badge bg-primary mt-1 badge-role">{{ user.role.value }}</span>
+                </div>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item text-danger fw-semibold" href="/logout">
+                  <svg class="icon me-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="16" height="16">
+                    <path fill="currentColor" d="M192 128h-64v256h64v32H96V96h96zm224 128L288 128v80H192v96h96v80z"/>
+                  </svg>
+                  Keluar (Logout)
+                </a>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="container-fluid px-4">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb my-0">
+              <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+              {% block breadcrumb %}
+              <li class="breadcrumb-item active"><span>Dashboard</span></li>
+              {% endblock %}
+            </ol>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Area Konten Dinamis -->
+      <div class="body flex-grow-1">
+        <div class="container-fluid px-4">
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+
+      <!-- Footer Bawah -->
+      <footer class="footer px-4 border-top">
+        <div>
+          <a href="#">PresensiPintar</a> &copy; 2026 Sistem Absensi SMP Terpadu.
+        </div>
+        <div class="ms-auto">
+          Didukung oleh <a href="https://coreui.io" target="_blank" rel="noopener">CoreUI Free Bootstrap Admin Template</a>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Scripts CoreUI & Vendors -->
+    <script src="/static/vendors/@coreui/coreui/js/coreui.bundle.min.js"></script>
+    <script src="/static/vendors/simplebar/js/simplebar.min.js"></script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>
