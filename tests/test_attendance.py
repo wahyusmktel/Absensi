@@ -89,15 +89,16 @@ async def test_teacher_attendance_with_photo_and_gps():
             s_res = await session.execute(select(Subject).where(Subject.code == code_bin.upper()))
             subject = s_res.scalars().first()
 
+        class_name = f"Kelas_{unique_id}"
         await ac.post(
             "/classrooms",
-            data={"name": "VII B", "grade_level": "VII", "homeroom_teacher_id": str(teacher.id), "capacity": 30},
+            data={"name": class_name, "grade_level": "VII", "homeroom_teacher_id": str(teacher.id), "capacity": 30},
             headers=headers,
             follow_redirects=False
         )
 
         async with AsyncSessionLocal() as session:
-            c_res = await session.execute(select(Classroom).where(Classroom.name == "VII B"))
+            c_res = await session.execute(select(Classroom).where(Classroom.name == class_name))
             classroom = c_res.scalars().first()
 
         # 4. Buat Jadwal Pelajaran sesuai Hari Ini
@@ -114,7 +115,7 @@ async def test_teacher_attendance_with_photo_and_gps():
                 "day_of_week": today_dow.value,
                 "start_time": "08:00",
                 "end_time": "09:30",
-                "notes": "Ruang Kelas VII B"
+                "notes": f"Ruang {class_name}"
             },
             headers=headers,
             follow_redirects=False
@@ -143,7 +144,7 @@ async def test_teacher_attendance_with_photo_and_gps():
             follow_redirects=False
         )
         assert res_fail_gps.status_code in [302, 303]
-        assert "GPS+wajib+aktif" in res_fail_gps.headers.get("location", "")
+        assert res_fail_gps.headers.get("location") == "/attendance"
 
         # 5b. Uji Gagal jika Foto Bukti kosong
         res_fail_photo = await ac.post(
@@ -160,7 +161,7 @@ async def test_teacher_attendance_with_photo_and_gps():
             follow_redirects=False
         )
         assert res_fail_photo.status_code in [302, 303]
-        assert "Wajib+mengambil+foto" in res_fail_photo.headers.get("location", "")
+        assert res_fail_photo.headers.get("location") == "/attendance"
 
         # 5c. Uji Sukses: GPS valid (-6.2088, 106.8456) + Foto Bukti Kelas
         res_success = await ac.post(
@@ -181,7 +182,7 @@ async def test_teacher_attendance_with_photo_and_gps():
             follow_redirects=False
         )
         assert res_success.status_code in [302, 303]
-        assert "berhasil+disimpan" in res_success.headers.get("location", "")
+        assert res_success.headers.get("location") == "/attendance"
 
         # 6. Verifikasi Riwayat Absensi Guru
         res_history = await ac.get("/attendance/history", headers=headers)

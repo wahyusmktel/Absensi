@@ -79,10 +79,13 @@ async def root(
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(
     request: Request,
-    success_msg: Optional[str] = None,
-    error_msg: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Halaman masuk (login).
+    Jika pengguna sudah memiliki sesi login aktif, otomatis dialihkan ke /dashboard
+    sehingga tidak dapat mengakses kembali formulir login.
+    """
     user, _ = await _get_auth_context(request, db)
     if user:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
@@ -90,10 +93,7 @@ async def login_page(
     return templates.TemplateResponse(
         request=request,
         name="auth/login.html",
-        context={
-            "success_msg": success_msg,
-            "error_msg": error_msg,
-        }
+        context={}
     )
 
 
@@ -104,6 +104,11 @@ async def login_submit(
     password: str = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
+    # Jika sudah login, langsung alihkan ke dashboard
+    user_check, _ = await _get_auth_context(request, db)
+    if user_check:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
     try:
         login_data = LoginRequest(email=email, password=password)
     except ValidationError:
@@ -144,13 +149,20 @@ async def login_submit(
 @router.get("/register", response_class=HTMLResponse)
 async def register_page(
     request: Request,
-    error_msg: Optional[str] = None
+    db: AsyncSession = Depends(get_db)
 ):
+    """
+    Halaman registrasi sekolah.
+    Jika pengguna sudah login, otomatis diarahkan ke /dashboard.
+    """
+    user, _ = await _get_auth_context(request, db)
+    if user:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
     return templates.TemplateResponse(
         request=request,
         name="auth/register.html",
         context={
-            "error_msg": error_msg,
             "form": {}
         }
     )
@@ -220,14 +232,17 @@ async def register_submit(
             status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    redirect_url = f"/login?success_msg=Sekolah+{school.name}+berhasil+didaftarkan.+Silakan+masuk+menggunakan+email+operator."
-    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+    # Bersih tanpa query parameter di URL
+    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/logout")
 async def logout():
+    """
+    Keluar dari sistem secara bersih tanpa query string di URL.
+    """
     response = RedirectResponse(
-        url="/login?success_msg=Anda+telah+berhasil+keluar+dari+sistem.",
+        url="/login",
         status_code=status.HTTP_303_SEE_OTHER
     )
     response.delete_cookie(key="access_token")
@@ -245,7 +260,7 @@ async def dashboard_page(
 ):
     user, school = await _get_auth_context(request, db)
     if not user:
-        return RedirectResponse(url="/login?error_msg=Silakan+masuk+terlebih+dahulu.", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     active_ay = None
     total_teachers = 0
@@ -398,7 +413,7 @@ async def academic_years_create(
         start_date=s_date,
         end_date=e_date
     )
-    return RedirectResponse(url="/academic-years?success_msg=Tahun+Pelajaran+berhasil+ditambahkan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/academic-years", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/academic-years/{ay_id}/set-active")
@@ -412,7 +427,7 @@ async def academic_years_set_active(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     await AcademicYearService.set_active(db, user.school_id, ay_id)
-    return RedirectResponse(url="/academic-years?success_msg=Tahun+Pelajaran+berhasil+diaktifkan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/academic-years", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/academic-years/{ay_id}/delete")
@@ -426,7 +441,7 @@ async def academic_years_delete(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     await AcademicYearService.soft_delete(db, user.school_id, ay_id)
-    return RedirectResponse(url="/academic-years?success_msg=Data+berhasil+dihapus+(Soft+Delete).", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/academic-years", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # ---------------------------------------------------------
@@ -497,7 +512,7 @@ async def teachers_create(
         address=address,
         employment_status=employment_status
     )
-    return RedirectResponse(url="/teachers?success_msg=Data+guru+berhasil+disimpan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/teachers", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/teachers/{teacher_id}/delete")
@@ -511,7 +526,7 @@ async def teachers_delete(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     await TeacherService.soft_delete(db, user.school_id, teacher_id)
-    return RedirectResponse(url="/teachers?success_msg=Data+guru+berhasil+dihapus+(Soft+Delete).", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/teachers", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # ---------------------------------------------------------
@@ -576,7 +591,7 @@ async def subjects_create(
         grade_level=grade_level,
         description=description
     )
-    return RedirectResponse(url="/subjects?success_msg=Mata+pelajaran+berhasil+disimpan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/subjects", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/subjects/{subject_id}/delete")
@@ -590,7 +605,7 @@ async def subjects_delete(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     await SubjectService.soft_delete(db, user.school_id, subject_id)
-    return RedirectResponse(url="/subjects?success_msg=Mata+pelajaran+berhasil+dihapus+(Soft+Delete).", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/subjects", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # ---------------------------------------------------------
@@ -656,7 +671,7 @@ async def classrooms_create(
     active_ay = await AcademicYearService.get_active(db, user.school_id)
     if not active_ay:
         return RedirectResponse(
-            url="/academic-years?error_msg=Harap+atur+satu+Tahun+Pelajaran+aktif+terlebih+dahulu+sebelum+menambah+kelas.",
+            url="/academic-years",
             status_code=status.HTTP_303_SEE_OTHER
         )
 
@@ -671,7 +686,7 @@ async def classrooms_create(
         homeroom_teacher_id=wali_id,
         capacity=capacity
     )
-    return RedirectResponse(url="/classrooms?success_msg=Data+kelas+berhasil+disimpan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/classrooms", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/classrooms/{classroom_id}/delete")
@@ -685,7 +700,7 @@ async def classrooms_delete(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     await ClassroomService.soft_delete(db, user.school_id, classroom_id)
-    return RedirectResponse(url="/classrooms?success_msg=Data+kelas+berhasil+dihapus+(Soft+Delete).", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/classrooms", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # ---------------------------------------------------------
@@ -709,7 +724,7 @@ async def schedules_page(
     active_ay = await AcademicYearService.get_active(db, user.school_id)
     if not active_ay:
         return RedirectResponse(
-            url="/academic-years?error_msg=Harap+aktifkan+satu+Tahun+Pelajaran+terlebih+dahulu.",
+            url="/academic-years",
             status_code=status.HTTP_303_SEE_OTHER
         )
 
@@ -785,7 +800,7 @@ async def schedules_create(
         end_time=e_time,
         notes=notes
     )
-    return RedirectResponse(url="/schedules?success_msg=Jadwal+pelajaran+berhasil+disimpan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/schedules", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/schedules/print", response_class=HTMLResponse)
@@ -835,7 +850,7 @@ async def schedules_delete(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     await ScheduleService.soft_delete(db, user.school_id, schedule_id)
-    return RedirectResponse(url="/schedules?success_msg=Jadwal+pelajaran+berhasil+dihapus+(Soft+Delete).", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/schedules", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # ---------------------------------------------------------
@@ -858,7 +873,7 @@ async def duty_teachers_page(
     active_ay = await AcademicYearService.get_active(db, user.school_id)
     if not active_ay:
         return RedirectResponse(
-            url="/academic-years?error_msg=Harap+aktifkan+Tahun+Pelajaran+terlebih+dahulu.",
+            url="/academic-years",
             status_code=status.HTTP_303_SEE_OTHER
         )
 
@@ -917,7 +932,7 @@ async def duty_teachers_create(
         duty_role=duty_role,
         notes=notes
     )
-    return RedirectResponse(url="/duty-teachers?success_msg=Petugas+guru+piket+berhasil+disimpan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/duty-teachers", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/duty-teachers/print", response_class=HTMLResponse)
@@ -957,7 +972,7 @@ async def duty_teachers_delete(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     await DutyTeacherService.soft_delete(db, user.school_id, duty_id)
-    return RedirectResponse(url="/duty-teachers?success_msg=Penugasan+piket+berhasil+dihapus+(Soft+Delete).", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/duty-teachers", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # ---------------------------------------------------------
@@ -979,7 +994,7 @@ async def attendance_page(
     active_ay = await AcademicYearService.get_active(db, user.school_id)
     if not active_ay:
         return RedirectResponse(
-            url="/academic-years?error_msg=Harap+aktifkan+Tahun+Pelajaran+terlebih+dahulu+sebelum+melakukan+absensi.",
+            url="/academic-years",
             status_code=status.HTTP_303_SEE_OTHER
         )
 
@@ -1045,14 +1060,14 @@ async def attendance_submit(
     # Validasi koordinat GPS (Wajib Aktif)
     if latitude == 0.0 or longitude == 0.0 or latitude is None or longitude is None:
         return RedirectResponse(
-            url="/attendance?error_msg=Gagal:+Koordinat+GPS+wajib+aktif+dan+terdeteksi+oleh+sistem.",
+            url="/attendance",
             status_code=status.HTTP_303_SEE_OTHER
         )
 
     # Validasi Bukti Foto Kamera di Kelas
     if not photo_base64 or len(photo_base64.strip()) < 50:
         return RedirectResponse(
-            url="/attendance?error_msg=Gagal:+Wajib+mengambil+foto+bukti+kehadiran+di+dalam+kelas.",
+            url="/attendance",
             status_code=status.HTTP_303_SEE_OTHER
         )
 
@@ -1074,10 +1089,7 @@ async def attendance_submit(
         device_info=device_info
     )
 
-    if not success:
-        return RedirectResponse(url=f"/attendance?error_msg={msg}", status_code=status.HTTP_303_SEE_OTHER)
-
-    return RedirectResponse(url="/attendance?success_msg=Absensi+kehadiran+guru+di+kelas+berhasil+disimpan.", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/attendance", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/attendance/history", response_class=HTMLResponse)

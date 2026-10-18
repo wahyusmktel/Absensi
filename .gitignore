@@ -60,5 +60,6 @@ uploads/
 temp/
 exported_files/
 
-# Archive source zip
+# Archive source zip & raw distribution template
 *.zip
+coreui-free-bootstrap-admin-template-v5.5.0-dist/
