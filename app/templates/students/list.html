@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Data Siswa - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Data Siswa</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-users text-primary me-2"></i>Data Peserta Didik (Siswa)</h3>
+        <p class="text-secondary mb-0">Kelola data induk siswa, rombongan belajar kelas, ekspor dan impor massal format Excel.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <!-- Tombol Tambah Siswa -->
+        <button type="button" class="btn btn-primary" data-coreui-toggle="modal" data-coreui-target="#addStudentModal">
+          <i class="fa-solid fa-user-plus me-1"></i> Tambah Siswa
+        </button>
+
+        <!-- Tombol Impor Excel -->
+        <button type="button" class="btn btn-outline-success" data-coreui-toggle="modal" data-coreui-target="#importStudentModal">
+          <i class="fa-solid fa-file-excel me-1"></i> Impor Excel
+        </button>
+
+        <!-- Tombol Ekspor Excel -->
+        <a href="/students/export-excel{% if selected_class_id %}?classroom_id={{ selected_class_id }}{% endif %}" class="btn btn-outline-primary">
+          <i class="fa-solid fa-download me-1"></i> Ekspor Excel
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter dan Pencarian -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <form method="GET" action="/students" class="row g-3 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-end-0"><i class="fa-solid fa-magnifying-glass text-secondary"></i></span>
+          <input type="text" name="search" class="form-control border-start-0" placeholder="Cari Nama Siswa atau NISN..." value="{{ search|default('') }}">
+        </div>
+      </div>
+      <div class="col-md-4">
+        <select name="classroom_id" class="form-select" onchange="this.form.submit()">
+          <option value="">-- Semua Kelas / Rombel --</option>
+          {% for c in classrooms_list %}
+          <option value="{{ c.id }}" {% if selected_class_id == str(c.id) %}selected{% endif %}>
+            Kelas {{ c.name }} (Tingkat {{ c.grade_level }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-secondary w-100">
+          <i class="fa-solid fa-filter me-1"></i> Filter
+        </button>
+        {% if search or selected_class_id %}
+        <a href="/students" class="btn btn-outline-secondary">Reset</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tabel Data Siswa -->
+<div class="card shadow-sm border-0">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light border-bottom">
+          <tr>
+            <th class="ps-3" style="width: 50px;">No</th>
+            <th>NISN / NIS</th>
+            <th>Nama Lengkap Siswa</th>
+            <th>L/P</th>
+            <th>Kelas / Rombel</th>
+            <th>Kontak Siswa / Orang Tua</th>
+            <th>Alamat</th>
+            <th class="text-end pe-3">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td class="ps-3 fw-bold text-secondary">{{ (page - 1) * 10 + loop.index }}</td>
+            <td>
+              <div class="font-monospace fw-semibold">{{ student.nisn }}</div>
+              {% if student.nis %}
+              <small class="text-secondary">NIS: {{ student.nis }}</small>
+              {% endif %}
+            </td>
+            <td>
+              <div class="fw-bold text-dark">{{ student.name }}</div>
+              {% if student.email %}
+              <small class="text-secondary"><i class="fa-regular fa-envelope me-1"></i>{{ student.email }}</small>
+              {% endif %}
+            </td>
+            <td>
+              {% if student.gender == 'L' %}
+              <span class="badge bg-primary-subtle text-primary fw-bold">Laki-laki</span>
+              {% else %}
+              <span class="badge bg-danger-subtle text-danger fw-bold">Perempuan</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if student.classroom %}
+              <span class="badge bg-info-subtle text-info fw-bold">{{ student.classroom.name }}</span>
+              {% else %}
+              <span class="text-secondary small fst-italic">Belum Ditentukan</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if student.phone %}
+              <div class="small"><i class="fa-brands fa-whatsapp text-success me-1"></i>{{ student.phone }}</div>
+              {% else %}
+              <span class="text-secondary small">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="small text-truncate" style="max-width: 180px;" title="{{ student.address or '' }}">
+                {{ student.address or '-' }}
+              </div>
+            </td>
+            <td class="text-end pe-3">
+              <form method="POST" action="/students/{{ student.id }}/delete" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data siswa ini?')">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus Siswa">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-4 text-secondary">
+              <i class="fa-solid fa-user-slash fa-2x mb-2 d-block text-secondary opacity-50"></i>
+              Belum ada data siswa yang ditemukan.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Paginasi 10 Data per Halaman -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center py-3">
+    <div class="small text-secondary">Halaman {{ page }} dari {{ total_pages }} (Total: {{ total_count }} Siswa)</div>
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/students?page={{ page - 1 }}&search={{ search|default('') }}&classroom_id={{ selected_class_id|default('') }}">Sebelumnya</a>
+      </li>
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="/students?page={{ p }}&search={{ search|default('') }}&classroom_id={{ selected_class_id|default('') }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/students?page={{ page + 1 }}&search={{ search|default('') }}&classroom_id={{ selected_class_id|default('') }}">Selanjutnya</a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal Tambah Siswa -->
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="POST" action="/students">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="addStudentModalLabel"><i class="fa-solid fa-user-plus me-2"></i> Tambah Data Siswa Baru</h5>
+          <button type="button" class="btn-close btn-close-white" data-coreui-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">NISN (Nomor Induk Siswa Nasional) <span class="text-danger">*</span></label>
+            <input type="text" name="nisn" class="form-control" placeholder="10 Digit NISN" required pattern="[0-9]{10}" title="10 digit angka NISN">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">NIS (Nomor Induk Sekolah Lokal)</label>
+            <input type="text" name="nis" class="form-control" placeholder="Nomor Induk Siswa di Sekolah">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nama Lengkap Siswa <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" placeholder="Contoh: Muhammad Farhan" required>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Jenis Kelamin <span class="text-danger">*</span></label>
+              <select name="gender" class="form-select" required>
+                <option value="L">Laki-laki (L)</option>
+                <option value="P">Perempuan (P)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Kelas / Rombel</label>
+              <select name="classroom_id" class="form-select">
+                <option value="">-- Pilih Kelas --</option>
+                {% for c in classrooms_list %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nomor WhatsApp / Telp Orang Tua</label>
+            <input type="text" name="phone" class="form-control" placeholder="Contoh: 081234567890">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Alamat Rumah Tinggal</label>
+            <textarea name="address" class="form-control" rows="2" placeholder="Alamat domisili siswa..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Simpan Data Siswa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Impor Siswa dari Excel -->
+<div class="modal fade" id="importStudentModal" tabindex="-1" aria-labelledby="importStudentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="POST" action="/students/import" enctype="multipart/form-data">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="importStudentModalLabel"><i class="fa-solid fa-file-excel me-2"></i> Impor Massal Siswa dari Excel</h5>
+          <button type="button" class="btn-close btn-close-white" data-coreui-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-info border-0 d-flex align-items-center mb-3">
+            <i class="fa-solid fa-circle-info fa-lg me-3"></i>
+            <div>
+              Gunakan format Excel standar untuk menghindari kesalahan. Unduh contoh template di bawah:
+            </div>
+          </div>
+          <div class="text-center mb-4">
+            <a href="/students/sample-excel" class="btn btn-sm btn-outline-success">
+              <i class="fa-solid fa-download me-1"></i> Unduh Template Sampel Siswa (.xlsx)
+            </a>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Pilih File Excel (.xlsx / .xls) <span class="text-danger">*</span></label>
+            <input type="file" name="file" class="form-control" accept=".xlsx, .xls" required>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success"><i class="fa-solid fa-upload me-1"></i> Mulai Impor Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

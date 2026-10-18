@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Portal Siswa - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active"><span>Portal Siswa</span></li>
+{% endblock %}
+
+{% block content %}
+<!-- Banner Profil Siswa -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card border-0 bg-gradient text-white shadow-sm overflow-hidden" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+      <div class="card-body p-4">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <span class="badge bg-white text-primary fw-bold mb-2">Portal Informasi Peserta Didik</span>
+            <h2 class="h3 fw-bold mb-1">Halo, {{ student.name if student else user.full_name }}!</h2>
+            <p class="mb-0 text-white-50">
+              NISN: <strong>{{ student.nisn if student else '-' }}</strong> | 
+              Kelas: <strong>{{ student.classroom.name if (student and student.classroom) else 'Belum Terdaftar di Kelas' }}</strong> |
+              Sekolah: <strong>{{ school.name if school else '-' }}</strong>
+            </p>
+          </div>
+          <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            {% if student and student.classroom and student.classroom.homeroom_teacher %}
+            <div class="bg-white text-dark rounded-3 p-3 shadow-sm d-inline-block text-start">
+              <div class="small text-secondary fw-semibold">Wali Kelas Anda:</div>
+              <div class="fw-bold text-primary">{{ student.classroom.homeroom_teacher.name }}</div>
+              <small class="text-secondary"><i class="fa-solid fa-phone me-1"></i>{{ student.classroom.homeroom_teacher.phone or '-' }}</small>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Jadwal & Kehadiran Guru Hari Ini -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold">
+          <i class="fa-solid fa-chalkboard text-primary me-2"></i> Jadwal Pelajaran & Kehadiran Guru Hari Ini
+        </h5>
+        <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2">
+          {{ today_day_name }}
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3" style="width: 140px;">Waktu</th>
+                <th>Mata Pelajaran</th>
+                <th>Guru Pengampu</th>
+                <th class="text-center pe-3" style="width: 160px;">Status di Kelas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in today_classes %}
+              <tr>
+                <td class="ps-3">
+                  <span class="badge bg-secondary font-monospace">
+                    {{ item.schedule.start_time.strftime('%H:%M') }} - {{ item.schedule.end_time.strftime('%H:%M') }}
+                  </span>
+                </td>
+                <td>
+                  <div class="fw-bold text-dark">{{ item.schedule.subject.name }}</div>
+                  {% if item.attendance and item.attendance.teaching_material %}
+                  <small class="text-primary"><i class="fa-solid fa-book-open me-1"></i>Materi: {{ item.attendance.teaching_material }}</small>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="fw-semibold">{{ item.schedule.teacher.name }}</div>
+                  <small class="text-secondary">{{ item.schedule.teacher.nip or '' }}</small>
+                </td>
+                <td class="text-center pe-3">
+                  {% if item.is_attended %}
+                    {% if item.attendance.status.value == 'Hadir' %}
+                    <span class="badge bg-success px-3 py-2">
+                      <i class="fa-solid fa-circle-check me-1"></i> Guru Hadir
+                    </span>
+                    <small class="text-secondary d-block mt-1 font-monospace">{{ item.attendance.attendance_time.strftime('%H:%M') }} WIB</small>
+                    {% elif item.attendance.status.value == 'Izin' %}
+                    <span class="badge bg-warning text-dark px-3 py-2">
+                      <i class="fa-solid fa-envelope me-1"></i> Izin (Tugas Piket)
+                    </span>
+                    {% elif item.attendance.status.value == 'Sakit' %}
+                    <span class="badge bg-danger px-3 py-2">
+                      <i class="fa-solid fa-heart-pulse me-1"></i> Sakit
+                    </span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary px-3 py-2">
+                      <i class="fa-regular fa-clock me-1"></i> Menunggu Guru
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center py-4 text-secondary">
+                  <i class="fa-solid fa-calendar-xmark fa-2x mb-2 d-block opacity-50"></i>
+                  Tidak ada jadwal mata pelajaran untuk kelas Anda pada hari ini.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guru Piket yang Bertugas Hari Ini -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <h5 class="card-title mb-0 fw-bold">
+          <i class="fa-solid fa-user-shield text-warning me-2"></i> Guru Piket Hari Ini
+        </h5>
+      </div>
+      <div class="card-body">
+        <p class="text-secondary small">
+          Jika guru mata pelajaran berhalangan hadir di kelas, perwakilan ketua kelas dapat melapor ke Guru Piket berikut:
+        </p>
+        <ul class="list-group list-group-flush">
+          {% for dp in duty_teachers_today %}
+          <li class="list-group-item px-0 py-3">
+            <div class="d-flex align-items-center">
+              <div class="bg-warning-subtle text-warning p-2 rounded-circle me-3">
+                <i class="fa-solid fa-user-shield fa-lg"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-bold text-dark">{{ dp.teacher.name }}</div>
+                <small class="text-secondary d-block">{{ dp.duty_role or 'Petugas Piket' }}</small>
+                {% if dp.teacher.phone %}
+                <small class="text-success fw-semibold">
+                  <i class="fa-brands fa-whatsapp me-1"></i>{{ dp.teacher.phone }}
+                </small>
+                {% endif %}
+              </div>
+            </div>
+          </li>
+          {% else %}
+          <li class="list-group-item px-0 py-3 text-center text-secondary small">
+            Belum ada jadwal guru piket yang diatur untuk hari ini.
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

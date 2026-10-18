@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Riwayat Presensi Saya - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Riwayat Presensi Saya</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Riwayat Kehadiran Mengajar Saya</h3>
+        <p class="text-secondary mb-0">Catatan riwayat presensi kehadiran di kelas dengan bukti foto dan koordinat lokasi GPS.</p>
+      </div>
+      <div>
+        <a href="/attendance" class="btn btn-primary">
+          <i class="fa-solid fa-camera-retro me-1"></i> Presensi Sekarang
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light border-bottom">
+          <tr>
+            <th class="ps-3" style="width: 50px;">No</th>
+            <th>Foto Bukti Kelas</th>
+            <th>Hari, Tanggal & Jam</th>
+            <th>Kelas / Rombel</th>
+            <th>Mata Pelajaran</th>
+            <th>Status</th>
+            <th>Lokasi GPS</th>
+            <th>Materi Pembelajaran</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for att in attendances %}
+          <tr>
+            <td class="ps-3 fw-bold text-secondary">{{ (page - 1) * 10 + loop.index }}</td>
+            <td>
+              {% if att.photo_url %}
+              <a href="{{ att.photo_url }}" target="_blank" title="Lihat Foto Bukti">
+                <img src="{{ att.photo_url }}" alt="Foto Kelas" class="rounded border shadow-sm" style="width: 54px; height: 54px; object-fit: cover;">
+              </a>
+              {% else %}
+              <span class="badge bg-secondary">Tanpa Foto</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="fw-semibold">{{ att.attendance_date.strftime('%d/%m/%Y') }}</div>
+              <small class="text-secondary font-monospace"><i class="fa-regular fa-clock me-1"></i>{{ att.attendance_time.strftime('%H:%M:%S') }} WIB</small>
+            </td>
+            <td>
+              <span class="badge bg-info-subtle text-info fw-bold">{{ att.schedule.classroom.name }}</span>
+            </td>
+            <td>
+              <div class="fw-semibold text-dark">{{ att.schedule.subject.name }}</div>
+            </td>
+            <td>
+              {% if att.status.value == 'Hadir' %}
+              <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> Hadir</span>
+              {% elif att.status.value == 'Izin' %}
+              <span class="badge bg-warning text-dark"><i class="fa-solid fa-envelope me-1"></i> Izin</span>
+              {% elif att.status.value == 'Sakit' %}
+              <span class="badge bg-danger"><i class="fa-solid fa-heart-pulse me-1"></i> Sakit</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ att.status.value }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="small">
+                <a href="https://maps.google.com/?q={{ att.latitude }},{{ att.longitude }}" target="_blank" class="text-decoration-none fw-semibold">
+                  <i class="fa-solid fa-map-location-dot text-danger me-1"></i>
+                  {{ att.latitude|round(4) }}, {{ att.longitude|round(4) }}
+                </a>
+              </div>
+              {% if att.location_accuracy %}
+              <small class="text-secondary">Akurasi: ±{{ att.location_accuracy|round(1) }}m</small>
+              {% endif %}
+            </td>
+            <td>
+              {% if att.teaching_material %}
+              <div class="small fw-semibold text-primary"><i class="fa-solid fa-book-open me-1"></i>{{ att.teaching_material }}</div>
+              {% endif %}
+              {% if att.notes %}
+              <small class="text-secondary d-block fst-italic">{{ att.notes }}</small>
+              {% elif not att.teaching_material %}
+              <span class="text-secondary small">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-4 text-secondary">
+              Belum ada riwayat kehadiran mengajar yang tercatat.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Paginasi -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center py-3">
+    <div class="small text-secondary">Halaman {{ page }} dari {{ total_pages }} (Total: {{ total_count }} Presensi)</div>
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/teacher/my-attendance?page={{ page - 1 }}">Sebelumnya</a>
+      </li>
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="/teacher/my-attendance?page={{ p }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/teacher/my-attendance?page={{ page + 1 }}">Selanjutnya</a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

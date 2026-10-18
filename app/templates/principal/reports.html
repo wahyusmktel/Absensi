@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan & Rekapitulasi Presensi Guru - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Rekapitulasi Presensi Guru</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-chart-line text-primary me-2"></i>Rekapitulasi Presensi Guru</h3>
+        <p class="text-secondary mb-0">Laporan evaluasi kedisiplinan dan kehadiran guru di kelas per periode tanggal & tahun pelajaran.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="/principal/reports/print?start_date={{ start_date|default('') }}&end_date={{ end_date|default('') }}" target="_blank" class="btn btn-outline-danger">
+          <i class="fa-solid fa-file-pdf me-1"></i> Cetak Dokumen PDF
+        </a>
+        <a href="/principal/reports/export-excel?start_date={{ start_date|default('') }}&end_date={{ end_date|default('') }}" class="btn btn-success text-white">
+          <i class="fa-solid fa-file-excel me-1"></i> Unduh Rekap Excel
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Periode Laporan -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <form method="GET" action="/principal/reports" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-bold text-secondary">Tanggal Mulai Periode</label>
+        <input type="date" name="start_date" class="form-control" value="{{ start_date|default('') }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-bold text-secondary">Tanggal Akhir Periode</label>
+        <input type="date" name="end_date" class="form-control" value="{{ end_date|default('') }}">
+      </div>
+      <div class="col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="fa-solid fa-filter me-1"></i> Terapkan Filter Periode
+        </button>
+        {% if start_date or end_date %}
+        <a href="/principal/reports" class="btn btn-outline-secondary">Reset</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tabel Rekapitulasi Presensi Seluruh Guru -->
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0 fw-bold"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i> Tabel Evaluasi Kehadiran Pendidik</h5>
+    <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2">
+      Periode: {{ start_date|default('Awal Semester') }} s.d {{ end_date|default('Hari Ini') }}
+    </span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light border-bottom">
+          <tr>
+            <th class="ps-3" style="width: 50px;">No</th>
+            <th>Nama Lengkap Guru & Gelar</th>
+            <th>NIP / NUPTK</th>
+            <th>Status Pegawai</th>
+            <th class="text-center">Hadir</th>
+            <th class="text-center">Izin</th>
+            <th class="text-center">Sakit</th>
+            <th class="text-center">Alpa</th>
+            <th class="text-center">Total Jam</th>
+            <th class="text-center pe-3">Persentase (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in rekap_list %}
+          <tr>
+            <td class="ps-3 fw-bold text-secondary">{{ loop.index }}</td>
+            <td>
+              <div class="fw-bold text-dark">{{ item.teacher.name }}</div>
+              <small class="text-secondary">{{ item.teacher.phone or '-' }}</small>
+            </td>
+            <td>
+              <span class="font-monospace">{{ item.teacher.nip or '-' }}</span>
+            </td>
+            <td>
+              <span class="badge bg-secondary-subtle text-secondary">{{ item.teacher.employment_status or '-' }}</span>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-success-subtle text-success fw-bold">{{ item.hadir }}</span>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-warning-subtle text-warning fw-bold">{{ item.izin }}</span>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-info-subtle text-info fw-bold">{{ item.sakit }}</span>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-danger-subtle text-danger fw-bold">{{ item.alpa }}</span>
+            </td>
+            <td class="text-center fw-bold">
+              {{ item.total_sesi }} Sesi
+            </td>
+            <td class="text-center pe-3">
+              <div class="d-flex align-items-center justify-content-center gap-2">
+                <div class="progress flex-grow-1" style="height: 6px; min-width: 60px;">
+                  <div class="progress-bar {% if item.percentage >= 85 %}bg-success{% elif item.percentage >= 70 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ item.percentage }}%;"></div>
+                </div>
+                <span class="fw-bold small {% if item.percentage >= 85 %}text-success{% elif item.percentage >= 70 %}text-warning{% else %}text-danger{% endif %}">
+                  {{ item.percentage }}%
+                </span>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" class="text-center py-4 text-secondary">
+              Belum ada data kehadiran pada periode yang dipilih.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

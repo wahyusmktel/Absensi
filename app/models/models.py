@@ -90,6 +90,7 @@ class School(Base):
     teachers = relationship("Teacher", back_populates="school", cascade="all, delete-orphan")
     subjects = relationship("Subject", back_populates="school", cascade="all, delete-orphan")
     classrooms = relationship("Classroom", back_populates="school", cascade="all, delete-orphan")
+    students = relationship("Student", back_populates="school", cascade="all, delete-orphan")
     schedules = relationship("Schedule", back_populates="school", cascade="all, delete-orphan")
     duty_teachers = relationship("DutyTeacher", back_populates="school", cascade="all, delete-orphan")
 
@@ -263,6 +264,7 @@ class Classroom(Base):
     school = relationship("School", back_populates="classrooms")
     academic_year = relationship("AcademicYear", back_populates="classrooms")
     homeroom_teacher = relationship("Teacher", back_populates="classrooms_as_wali")
+    students = relationship("Student", back_populates="classroom", cascade="all, delete-orphan")
     schedules = relationship("Schedule", back_populates="classroom", cascade="all, delete-orphan")
 
 
@@ -380,3 +382,41 @@ class TeacherAttendance(Base):
     academic_year = relationship("AcademicYear")
     schedule = relationship("Schedule")
     teacher = relationship("Teacher")
+
+
+class Student(Base):
+    """
+    Tabel data Siswa SMP.
+    Menghubungkan siswa dengan Sekolah, Rombongan Belajar (Classroom), dan Akun Pengguna (User).
+    """
+    __tablename__ = "students"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
+    classroom_id = Column(UUID(as_uuid=True), ForeignKey("classrooms.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    nisn = Column(String(20), unique=True, index=True, nullable=False)   # Nomor Induk Siswa Nasional
+    nis = Column(String(20), nullable=True, index=True)                  # Nomor Induk Sekolah
+    name = Column(String(255), nullable=False)                           # Nama Lengkap Siswa
+    gender = Column(String(10), nullable=True)                           # L / P
+    phone = Column(String(30), nullable=True)                            # Nomor Kontak / WA Siswa / Orang Tua
+    email = Column(String(255), nullable=True)
+    address = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    # Audit trail & Soft delete
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Relasi
+    school = relationship("School", back_populates="students")
+    classroom = relationship("Classroom", back_populates="students")
+    user = relationship("User")
+

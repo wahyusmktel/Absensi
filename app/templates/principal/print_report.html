@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Laporan Rekapitulasi Kehadiran Guru - {{ school.name }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      color: #000;
+      background: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    .kop-surat {
+      text-align: center;
+      border-bottom: 3px double #000;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+    }
+    .kop-surat h4 {
+      margin: 0;
+      font-size: 14pt;
+      text-transform: uppercase;
+      font-weight: normal;
+    }
+    .kop-surat h3 {
+      margin: 4px 0;
+      font-size: 16pt;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    .kop-surat p {
+      margin: 2px 0;
+      font-size: 10pt;
+      font-style: italic;
+    }
+    .report-title {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .report-title h4 {
+      margin: 0;
+      font-size: 13pt;
+      text-decoration: underline;
+      text-transform: uppercase;
+    }
+    .report-title span {
+      font-size: 10pt;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+      font-size: 10pt;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 6px 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+      text-align: center;
+      font-weight: bold;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .ttd-container {
+      width: 100%;
+      margin-top: 40px;
+    }
+    .ttd-box {
+      float: right;
+      width: 250px;
+      text-align: center;
+      font-size: 11pt;
+    }
+    .ttd-space {
+      height: 70px;
+    }
+    .no-print {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-family: sans-serif;
+    }
+    .btn-print { background: #0d6efd; color: #fff; }
+    .btn-close { background: #6c757d; color: #fff; }
+    @media print {
+      .no-print { display: none !important; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="no-print">
+  <div>
+    <strong>Mode Cetak Dokumen Resmi PDF / Fisik</strong> | PresensiPintar SMP
+  </div>
+  <div>
+    <button class="btn btn-print" onclick="window.print()">
+      <i class="fa-solid fa-print"></i> Cetak / Simpan PDF
+    </button>
+    <button class="btn btn-close" onclick="window.close()">Tutup</button>
+  </div>
+</div>
+
+<!-- KOP SURAT SEKOLAH -->
+<div class="kop-surat">
+  <h4>PEMERINTAH DAERAH PROVINSI / KABUPATEN</h4>
+  <h4>DINAS PENDIDIKAN DAN KEBUDAYAAN</h4>
+  <h3>{{ school.name }}</h3>
+  <p>{{ school.address or 'Alamat Sekolah Belum Diisi' }} | Telp: {{ school.phone or '-' }} | NPSN: {{ school.npsn }}</p>
+</div>
+
+<!-- JUDUL LAPORAN -->
+<div class="report-title">
+  <h4>REKAPITULASI KEHADIRAN DAN PRESENSI GURU</h4>
+  <span>Periode: {{ period_label }}</span>
+</div>
+
+<!-- TABEL REKAPITULASI -->
+<table>
+  <thead>
+    <tr>
+      <th style="width: 30px;">NO</th>
+      <th>NAMA GURU LENGKAP & GELAR</th>
+      <th>NIP / NUPTK</th>
+      <th>STATUS</th>
+      <th style="width: 50px;">HADIR</th>
+      <th style="width: 45px;">IZIN</th>
+      <th style="width: 45px;">SAKIT</th>
+      <th style="width: 45px;">ALPA</th>
+      <th style="width: 60px;">TOTAL</th>
+      <th style="width: 60px;">PERSEN</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in rekap_list %}
+    <tr>
+      <td class="text-center">{{ loop.index }}</td>
+      <td><strong>{{ item.teacher.name }}</strong></td>
+      <td class="text-center">{{ item.teacher.nip or '-' }}</td>
+      <td class="text-center">{{ item.teacher.employment_status or '-' }}</td>
+      <td class="text-center">{{ item.hadir }}</td>
+      <td class="text-center">{{ item.izin }}</td>
+      <td class="text-center">{{ item.sakit }}</td>
+      <td class="text-center">{{ item.alpa }}</td>
+      <td class="text-center"><strong>{{ item.total_sesi }}</strong></td>
+      <td class="text-center"><strong>{{ item.percentage }}%</strong></td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="10" class="text-center">Belum ada data presensi pada periode ini.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- TANDA TANGAN KEPALA SEKOLAH -->
+<div class="ttd-container">
+  <div class="ttd-box">
+    <div>Ditetapkan di: {{ school.name.split()[-1] if school.name else 'Sekolah' }}</div>
+    <div>Pada Tanggal: {{ today_formatted }}</div>
+    <div style="margin-top: 5px;">Kepala Sekolah,</div>
+    <div class="ttd-space"></div>
+    <div style="font-weight: bold; text-decoration: underline;">
+      {{ principal_name or '( _________________________ )' }}
+    </div>
+    <div>NIP: {{ principal_nip or '....................................' }}</div>
+  </div>
+  <div style="clear: both;"></div>
+</div>
+
+</body>
+</html>

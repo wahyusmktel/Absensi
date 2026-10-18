@@ -18,9 +18,9 @@
             <h2 class="h3 fw-bold mb-1">Selamat Datang, {{ user.full_name }}!</h2>
             <p class="mb-0 text-white-50">
               {% if school %}
-                Anda terhubung sebagai <strong>{{ user.role.value }}</strong> di <strong>{{ school.name }}</strong> (NPSN: {{ school.npsn }}).
+                Anda masuk sebagai <strong class="text-white text-uppercase">{{ user.role.value }}</strong> di <strong>{{ school.name }}</strong> (NPSN: {{ school.npsn }}).
               {% else %}
-                Anda mengelola sistem multi-tenant sebagai <strong>{{ user.role.value }}</strong>.
+                Anda mengelola sistem multi-tenant sebagai <strong class="text-white text-uppercase">{{ user.role.value }}</strong>.
               {% endif %}
             </p>
           </div>
@@ -44,7 +44,344 @@
   </div>
 </div>
 
-<!-- Kartu Ringkasan Informasi Cepat -->
+{# ========================================================================= #}
+{# 1. DASHBOARD KHUSUS SUPERADMIN                                           #}
+{# ========================================================================= #}
+{% if user.role.value == 'superadmin' %}
+<div class="row g-4 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0">
+      <div class="card-body d-flex align-items-center">
+        <div class="bg-primary-subtle text-primary p-3 rounded-3 me-3">
+          <i class="fa-solid fa-school-flag fa-2x"></i>
+        </div>
+        <div>
+          <div class="text-body-secondary small text-uppercase fw-semibold">Total Sekolah</div>
+          <div class="fs-4 fw-semibold my-1">{{ total_schools|default(0) }} Sekolah</div>
+          <div class="small text-secondary"><a href="/schools" class="text-decoration-none">Kelola Sekolah &rarr;</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0">
+      <div class="card-body d-flex align-items-center">
+        <div class="bg-success-subtle text-success p-3 rounded-3 me-3">
+          <i class="fa-solid fa-chalkboard-user fa-2x"></i>
+        </div>
+        <div>
+          <div class="text-body-secondary small text-uppercase fw-semibold">Total Guru Nasional</div>
+          <div class="fs-4 fw-semibold my-1">{{ total_teachers_global|default(0) }} Orang</div>
+          <div class="small text-secondary">Terdaftar di sistem</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0">
+      <div class="card-body d-flex align-items-center">
+        <div class="bg-info-subtle text-info p-3 rounded-3 me-3">
+          <i class="fa-solid fa-users fa-2x"></i>
+        </div>
+        <div>
+          <div class="text-body-secondary small text-uppercase fw-semibold">Total Siswa</div>
+          <div class="fs-4 fw-semibold my-1">{{ total_students_global|default(0) }} Siswa</div>
+          <div class="small text-secondary">Seluruh tenant SMP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0">
+      <div class="card-body d-flex align-items-center">
+        <div class="bg-warning-subtle text-warning p-3 rounded-3 me-3">
+          <i class="fa-solid fa-camera-retro fa-2x"></i>
+        </div>
+        <div>
+          <div class="text-body-secondary small text-uppercase fw-semibold">Total Presensi</div>
+          <div class="fs-4 fw-semibold my-1">{{ total_attendances_global|default(0) }} Sesi</div>
+          <div class="small text-secondary">Log presensi GPS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ========================================================================= #}
+{# 2. DASHBOARD KHUSUS KEPALA SEKOLAH                                       #}
+{# ========================================================================= #}
+{% elif user.role.value == 'kepala_sekolah' %}
+<div class="row g-4 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 bg-success-subtle border-start border-success border-4">
+      <div class="card-body">
+        <div class="text-success small text-uppercase fw-bold">Kehadiran Guru Hari Ini</div>
+        <div class="display-6 fw-bold my-1 text-success">{{ stats_today.attendance_percentage|default(0) }}%</div>
+        <div class="small text-secondary">{{ stats_today.total_present|default(0) }} dari {{ stats_today.total_schedules|default(0) }} Sesi Hadir</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 bg-warning-subtle border-start border-warning border-4">
+      <div class="card-body">
+        <div class="text-warning-emphasis small text-uppercase fw-bold">Izin / Sakit</div>
+        <div class="display-6 fw-bold my-1 text-warning-emphasis">
+          {{ (stats_today.total_permit|default(0)) + (stats_today.total_sick|default(0)) }}
+        </div>
+        <div class="small text-secondary">{{ stats_today.total_permit|default(0) }} Izin, {{ stats_today.total_sick|default(0) }} Sakit</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 bg-danger-subtle border-start border-danger border-4">
+      <div class="card-body">
+        <div class="text-danger small text-uppercase fw-bold">Belum Presensi</div>
+        <div class="display-6 fw-bold my-1 text-danger">{{ stats_today.total_pending|default(0) }}</div>
+        <div class="small text-secondary">Sesi mengajar belum absen</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card shadow-sm border-0 bg-primary-subtle border-start border-primary border-4">
+      <div class="card-body">
+        <div class="text-primary small text-uppercase fw-bold">Laporan & Rekapitulasi</div>
+        <div class="my-2">
+          <a href="/principal/reports" class="btn btn-sm btn-primary w-100 fw-semibold">
+            <i class="fa-solid fa-chart-line me-1"></i> Buka Rekap Kehadiran
+          </a>
+        </div>
+        <div class="small text-secondary">Laporan bulanan & semester</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Guru Piket Bertugas Hari Ini -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold"><i class="fa-solid fa-user-shield text-warning me-2"></i> Guru Piket Hari Ini ({{ today_day_name }})</h5>
+        <a href="/duty-teachers" class="btn btn-sm btn-outline-primary">Lihat Jadwal Piket</a>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for dp in duty_teachers_today %}
+          <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+            <div>
+              <div class="fw-bold text-dark">{{ dp.teacher.name }}</div>
+              <small class="text-secondary">{{ dp.duty_role or 'Petugas Piket' }}</small>
+            </div>
+            {% if dp.teacher.phone %}
+            <a href="https://wa.me/{{ dp.teacher.phone|replace('+', '')|replace('-', '')|replace(' ', '') }}" target="_blank" class="btn btn-sm btn-outline-success">
+              <i class="fa-brands fa-whatsapp me-1"></i> Kontak
+            </a>
+            {% endif %}
+          </li>
+          {% else %}
+          <li class="list-group-item p-4 text-center text-secondary small">
+            Belum ada guru piket yang terjadwal untuk hari ini.
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold"><i class="fa-solid fa-camera-retro text-primary me-2"></i> Presensi Terbaru Hari Ini</h5>
+        <a href="/attendance/history" class="btn btn-sm btn-outline-secondary">Riwayat Lengkap</a>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for a in recent_attendances %}
+          <li class="list-group-item p-3 d-flex align-items-center gap-3">
+            {% if a.photo_url %}
+            <img src="{{ a.photo_url }}" class="rounded shadow-sm" style="width: 44px; height: 44px; object-fit: cover;">
+            {% else %}
+            <div class="bg-secondary text-white rounded p-2"><i class="fa-solid fa-user"></i></div>
+            {% endif %}
+            <div class="flex-grow-1">
+              <div class="fw-bold text-dark">{{ a.teacher.name }}</div>
+              <small class="text-secondary">{{ a.schedule.classroom.name }} - {{ a.schedule.subject.name }}</small>
+            </div>
+            <span class="badge bg-success"><i class="fa-regular fa-clock me-1"></i>{{ a.attendance_time.strftime('%H:%M') }} WIB</span>
+          </li>
+          {% else %}
+          <li class="list-group-item p-4 text-center text-secondary small">
+            Belum ada presensi yang masuk pada hari ini.
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ========================================================================= #}
+{# 3. DASHBOARD KHUSUS GURU                                                 #}
+{# ========================================================================= #}
+{% elif user.role.value == 'guru' %}
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold">
+          <i class="fa-solid fa-calendar-check text-primary me-2"></i> Jadwal Mengajar Anda Hari Ini ({{ today_day_name }})
+        </h5>
+        <a href="/attendance" class="btn btn-sm btn-primary">
+          <i class="fa-solid fa-camera-retro me-1"></i> Buka Presensi Kelas
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Waktu</th>
+                <th>Kelas</th>
+                <th>Mata Pelajaran</th>
+                <th class="text-center pe-3">Status Presensi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in teacher_today_schedules %}
+              <tr>
+                <td class="ps-3 font-monospace fw-semibold">
+                  {{ item.schedule.start_time.strftime('%H:%M') }} - {{ item.schedule.end_time.strftime('%H:%M') }}
+                </td>
+                <td><span class="badge bg-info-subtle text-info fw-bold">Kelas {{ item.schedule.classroom.name }}</span></td>
+                <td class="fw-bold">{{ item.schedule.subject.name }}</td>
+                <td class="text-center pe-3">
+                  {% if item.is_attended %}
+                    <span class="badge bg-success px-3 py-2">
+                      <i class="fa-solid fa-check me-1"></i> Sudah Absen ({{ item.attendance.attendance_time.strftime('%H:%M') }})
+                    </span>
+                  {% else %}
+                    <a href="/attendance" class="btn btn-sm btn-danger px-3">
+                      <i class="fa-solid fa-camera me-1"></i> Absen Sekarang
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center py-4 text-secondary">
+                  <i class="fa-solid fa-mug-hot fa-2x mb-2 d-block opacity-50"></i>
+                  Anda tidak memiliki jadwal mengajar pada hari {{ today_day_name }}.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i> Menu Cepat Guru</h5>
+      </div>
+      <div class="card-body d-flex flex-column gap-3">
+        <a href="/attendance" class="btn btn-lg btn-primary text-start p-3 shadow-sm">
+          <div class="fw-bold"><i class="fa-solid fa-camera-retro me-2"></i> Presensi Kelas</div>
+          <small class="text-white-50">Ambil foto selfie/kelas & koordinat GPS</small>
+        </a>
+        <a href="/teacher/my-schedules" class="btn btn-lg btn-outline-primary text-start p-3">
+          <div class="fw-bold"><i class="fa-solid fa-calendar-days me-2"></i> Jadwal Mengajar Saya</div>
+          <small class="text-secondary">Lihat seluruh jadwal mengajar mingguan</small>
+        </a>
+        <a href="/teacher/my-attendance" class="btn btn-lg btn-outline-secondary text-start p-3">
+          <div class="fw-bold"><i class="fa-solid fa-clock-rotate-left me-2"></i> Riwayat Kehadiran</div>
+          <small class="text-secondary">Daftar presensi kelas yang telah terekam</small>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ========================================================================= #}
+{# 4. DASHBOARD KHUSUS SISWA                                                #}
+{# ========================================================================= #}
+{% elif user.role.value == 'siswa' %}
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-bold">
+          <i class="fa-solid fa-chalkboard text-primary me-2"></i> Jadwal Pelajaran Kelas Saya Hari Ini ({{ today_day_name }})
+        </h5>
+        <a href="/student/my-class-schedule" class="btn btn-sm btn-outline-primary">Lihat Jadwal Mingguan</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3" style="width: 150px;">Waktu</th>
+                <th>Mata Pelajaran</th>
+                <th>Guru Pengampu</th>
+                <th class="text-center pe-3">Kehadiran Guru di Kelas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in student_today_classes %}
+              <tr>
+                <td class="ps-3 font-monospace fw-semibold">
+                  {{ item.schedule.start_time.strftime('%H:%M') }} - {{ item.schedule.end_time.strftime('%H:%M') }}
+                </td>
+                <td>
+                  <div class="fw-bold text-dark">{{ item.schedule.subject.name }}</div>
+                  {% if item.attendance and item.attendance.teaching_material %}
+                  <small class="text-primary"><i class="fa-solid fa-book-open me-1"></i>Materi: {{ item.attendance.teaching_material }}</small>
+                  {% endif %}
+                </td>
+                <td>{{ item.schedule.teacher.name }}</td>
+                <td class="text-center pe-3">
+                  {% if item.is_attended %}
+                    {% if item.attendance.status.value == 'Hadir' %}
+                    <span class="badge bg-success px-3 py-2">
+                      <i class="fa-solid fa-circle-check me-1"></i> Guru Sudah Hadir
+                    </span>
+                    {% elif item.attendance.status.value == 'Izin' %}
+                    <span class="badge bg-warning text-dark px-3 py-2">
+                      <i class="fa-solid fa-envelope me-1"></i> Guru Izin (Lapor Piket)
+                    </span>
+                    {% elif item.attendance.status.value == 'Sakit' %}
+                    <span class="badge bg-danger px-3 py-2">
+                      <i class="fa-solid fa-heart-pulse me-1"></i> Guru Sakit
+                    </span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary px-3 py-2">
+                      <i class="fa-regular fa-clock me-1"></i> Belum Masuk Kelas
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center py-4 text-secondary">
+                  Tidak ada jadwal mata pelajaran hari ini.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ========================================================================= #}
+{# 5. DASHBOARD DEFAULT: OPERATOR SEKOLAH                                   #}
+{# ========================================================================= #}
+{% else %}
 <div class="row g-4 mb-4">
   <div class="col-sm-6 col-xl-3">
     <div class="card shadow-sm border-0">
@@ -65,12 +402,12 @@
     <div class="card shadow-sm border-0">
       <div class="card-body d-flex align-items-center">
         <div class="bg-success-subtle text-success p-3 rounded-3 me-3">
-          <i class="fa-solid fa-people-roof fa-2x"></i>
+          <i class="fa-solid fa-users fa-2x"></i>
         </div>
         <div>
-          <div class="text-body-secondary small text-uppercase fw-semibold">Total Kelas</div>
-          <div class="fs-4 fw-semibold my-1">{{ total_classrooms|default(0) }} Rombel</div>
-          <div class="small text-secondary"><a href="/classrooms" class="text-decoration-none">Kelola Kelas &rarr;</a></div>
+          <div class="text-body-secondary small text-uppercase fw-semibold">Total Siswa</div>
+          <div class="fs-4 fw-semibold my-1">{{ total_students|default(0) }} Siswa</div>
+          <div class="small text-secondary"><a href="/students" class="text-decoration-none">Kelola Siswa &rarr;</a></div>
         </div>
       </div>
     </div>
@@ -80,12 +417,12 @@
     <div class="card shadow-sm border-0">
       <div class="card-body d-flex align-items-center">
         <div class="bg-info-subtle text-info p-3 rounded-3 me-3">
-          <i class="fa-solid fa-book-open-reader fa-2x"></i>
+          <i class="fa-solid fa-people-roof fa-2x"></i>
         </div>
         <div>
-          <div class="text-body-secondary small text-uppercase fw-semibold">Mata Pelajaran</div>
-          <div class="fs-4 fw-semibold my-1">{{ total_subjects|default(0) }} Mapel</div>
-          <div class="small text-secondary"><a href="/subjects" class="text-decoration-none">Kelola Mapel &rarr;</a></div>
+          <div class="text-body-secondary small text-uppercase fw-semibold">Total Kelas</div>
+          <div class="fs-4 fw-semibold my-1">{{ total_classrooms|default(0) }} Rombel</div>
+          <div class="small text-secondary"><a href="/classrooms" class="text-decoration-none">Kelola Kelas &rarr;</a></div>
         </div>
       </div>
     </div>
@@ -106,8 +443,9 @@
     </div>
   </div>
 </div>
+{% endif %}
 
-<!-- Informasi Akun & Data Sekolah (UUID disembunyikan dari UI) -->
+<!-- Detail Profil Akun & Detail Profil Sekolah -->
 <div class="row g-4">
   <div class="col-lg-6">
     <div class="card shadow-sm border-0 h-100">
@@ -115,7 +453,7 @@
         <h5 class="card-title mb-0 fw-bold"><i class="fa-solid fa-id-card me-2 text-primary"></i> Detail Profil Pengguna</h5>
       </div>
       <div class="card-body">
-        <table class="table table-borderless">
+        <table class="table table-borderless mb-0">
           <tbody>
             <tr>
               <th scope="row" class="text-secondary" style="width: 35%;">Nama Lengkap</th>
@@ -130,7 +468,7 @@
               <td><span class="badge bg-primary text-uppercase">{{ user.role.value }}</span></td>
             </tr>
             <tr>
-              <th scope="row" class="text-secondary">NIP</th>
+              <th scope="row" class="text-secondary">NIP / Identitas</th>
               <td>{{ user.nip or '-' }}</td>
             </tr>
             <tr>
@@ -160,15 +498,15 @@
       </div>
       <div class="card-body">
         {% if school %}
-        <table class="table table-borderless">
+        <table class="table table-borderless mb-0">
           <tbody>
             <tr>
-              <th scope="row" class="text-secondary" style="width: 35%;">NPSN</th>
-              <td class="fw-bold text-primary">{{ school.npsn }}</td>
+              <th scope="row" class="text-secondary" style="width: 35%;">Nama Sekolah</th>
+              <td class="fw-semibold text-primary">{{ school.name }}</td>
             </tr>
             <tr>
-              <th scope="row" class="text-secondary">Nama Sekolah</th>
-              <td class="fw-semibold">{{ school.name }}</td>
+              <th scope="row" class="text-secondary">NPSN</th>
+              <td><span class="font-monospace fw-bold">{{ school.npsn }}</span></td>
             </tr>
             <tr>
               <th scope="row" class="text-secondary">Jenjang</th>
@@ -179,7 +517,7 @@
               <td>{{ school.address or '-' }}</td>
             </tr>
             <tr>
-              <th scope="row" class="text-secondary">Telepon Sekolah</th>
+              <th scope="row" class="text-secondary">No. Telepon</th>
               <td>{{ school.phone or '-' }}</td>
             </tr>
             <tr>
@@ -189,11 +527,9 @@
           </tbody>
         </table>
         {% else %}
-        <div class="text-center py-4">
-          <div class="fs-1 mb-2 text-primary"><i class="fa-solid fa-city"></i></div>
-          <h6 class="fw-bold">Akun Pusat Super Administrator</h6>
-          <p class="text-secondary small">Akun ini memiliki otoritas lintas-sekolah untuk seluruh entitas SMP yang terdaftar.</p>
-          <a href="/schools" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-list me-1"></i> Lihat Daftar Semua Sekolah</a>
+        <div class="p-4 text-center text-secondary">
+          <i class="fa-solid fa-circle-info fa-2x mb-2 d-block opacity-50"></i>
+          Akun Super Administrator mengelola seluruh sekolah terdaftar.
         </div>
         {% endif %}
       </div>

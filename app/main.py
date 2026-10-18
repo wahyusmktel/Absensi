@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.auth import router as api_auth_router
+from app.api.v1.mobile import router as api_mobile_router
 from app.core.config import settings
 from app.core.init_db import init_db
 from app.routers.web_routes import router as web_router
@@ -92,6 +93,7 @@ async def not_found_handler(request: Request, exc):
 # Registrasi Router
 app.include_router(web_router)
 app.include_router(api_auth_router, prefix="/api/v1")
+app.include_router(api_mobile_router, prefix="/api/v1")
 
 
 if __name__ == "__main__":

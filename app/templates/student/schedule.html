@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Jadwal Pelajaran Kelas - PresensiPintar{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+<li class="breadcrumb-item active"><span>Jadwal Pelajaran Kelas</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div>
+        <h3 class="fw-bold mb-1"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Jadwal Pelajaran Kelas {{ classroom.name if classroom else '' }}</h3>
+        <p class="text-secondary mb-0">Jadwal kegiatan belajar mengajar mingguan (Senin - Sabtu).</p>
+      </div>
+      <div>
+        <a href="/dashboard" class="btn btn-outline-primary">
+          <i class="fa-solid fa-arrow-left me-1"></i> Kembali ke Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% for day_name in ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"] %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-primary-subtle text-primary fw-bold py-3 d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-calendar-day me-2"></i>{{ day_name }}</span>
+        <span class="badge bg-primary text-white">
+          {{ day_schedules.get(day_name, [])|length }} Mapel
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for sch in day_schedules.get(day_name, []) %}
+          <li class="list-group-item p-3">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <span class="badge bg-secondary font-monospace">
+                {{ sch.start_time.strftime('%H:%M') }} - {{ sch.end_time.strftime('%H:%M') }}
+              </span>
+            </div>
+            <div class="fw-bold text-dark mt-1">{{ sch.subject.name }}</div>
+            <div class="small text-secondary mt-1"><i class="fa-solid fa-chalkboard-user me-1"></i>{{ sch.teacher.name }}</div>
+            {% if sch.notes %}
+            <small class="text-muted d-block mt-1"><i class="fa-solid fa-location-dot me-1"></i>{{ sch.notes }}</small>
+            {% endif %}
+          </li>
+          {% else %}
+          <li class="list-group-item p-4 text-center text-secondary small fst-italic">
+            Tidak ada jam pelajaran.
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

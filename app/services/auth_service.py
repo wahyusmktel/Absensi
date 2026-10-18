@@ -5,6 +5,7 @@ Menangani logika bisnis pendaftaran sekolah dan login multi-tenant.
 
 from datetime import datetime, timezone
 from typing import Optional, Tuple
+from uuid import UUID
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -111,3 +112,77 @@ class AuthService:
         )
 
         return True, "Login berhasil.", user, token
+
+    @staticmethod
+    async def get_school_users(
+        db: AsyncSession,
+        school_id: Optional[UUID] = None,
+        page: int = 1,
+        limit: int = 10,
+        search: Optional[str] = None,
+        role: Optional[UserRole] = None
+    ) -> Tuple[list, int, int]:
+        """
+        Mengambil daftar pengguna sekolah dengan paginasi dan pencarian.
+        Jika school_id None, maka mengambil seluruh pengguna (khusus Superadmin).
+        """
+        from math import ceil
+        from sqlalchemy import func
+
+        query = select(User)
+        if school_id:
+            query = query.where(User.school_id == school_id)
+        if role:
+            query = query.where(User.role == role)
+        if search:
+            query = query.where(
+                or_(
+                    User.full_name.ilike(f"%{search.strip()}%"),
+                    User.email.ilike(f"%{search.strip()}%"),
+                    User.nip.ilike(f"%{search.strip()}%")
+                )
+            )
+
+        total_res = await db.execute(select(func.count()).select_from(query.subquery()))
+        total_count = total_res.scalar() or 0
+        total_pages = ceil(total_count / limit) if total_count > 0 else 1
+
+        offset = (page - 1) * limit
+        items_res = await db.execute(
+            query.order_by(User.created_at.desc()).offset(offset).limit(limit)
+        )
+        return items_res.scalars().all(), total_count, total_pages
+
+    @staticmethod
+    async def create_school_user(
+        db: AsyncSession,
+        school_id: Optional[UUID],
+        email: str,
+        password: str,
+        full_name: str,
+        role: UserRole,
+        phone: Optional[str] = None,
+        nip: Optional[str] = None
+    ) -> Tuple[bool, str, Optional[User]]:
+        """
+        Membuat akun pengguna baru dalam lingkup sekolah atau sistem.
+        """
+        email_clean = email.strip().lower()
+        exist_check = await db.execute(select(User).where(User.email == email_clean))
+        if exist_check.scalar_one_or_none():
+            return False, f"Email '{email_clean}' sudah digunakan akun lain.", None
+
+        new_user = User(
+            school_id=school_id,
+            email=email_clean,
+            hashed_password=get_password_hash(password),
+            full_name=full_name.strip(),
+            role=role,
+            phone=phone.strip() if phone else None,
+            nip=nip.strip() if nip else None,
+            is_active=True
+        )
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        return True, "Akun pengguna berhasil dibuat.", new_user

@@ -79,6 +79,9 @@
           </a>
         </li>
 
+        {# ========================================== #}
+        {# MENU: SUPERADMIN                          #}
+        {# ========================================== #}
         {% if user.role.value == 'superadmin' %}
         <li class="nav-title">Super Administrator</li>
         <li class="nav-item">
@@ -88,32 +91,43 @@
             <span class="badge badge-sm bg-success ms-auto">Tenant</span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'school_users' %}active{% endif %}" href="/school/users">
+            <i class="fa-solid fa-users-gear nav-icon"></i>
+            Akun Pengguna
+          </a>
+        </li>
         {% endif %}
 
-        {% if user.role.value in ['operator_sekolah', 'kepala_sekolah', 'superadmin'] %}
+        {# ========================================== #}
+        {# MENU: OPERATOR SEKOLAH                     #}
+        {# ========================================== #}
+        {% if user.role.value == 'operator_sekolah' %}
         <li class="nav-title">Pendataan Awal</li>
-        
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'academic_years' %}active{% endif %}" href="/academic-years">
             <i class="fa-solid fa-calendar-days nav-icon"></i>
             Tahun Pelajaran
           </a>
         </li>
-
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'teachers' %}active{% endif %}" href="/teachers">
             <i class="fa-solid fa-chalkboard-user nav-icon"></i>
             Data Guru
           </a>
         </li>
-
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'students' %}active{% endif %}" href="/students">
+            <i class="fa-solid fa-users nav-icon"></i>
+            Data Siswa
+          </a>
+        </li>
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'subjects' %}active{% endif %}" href="/subjects">
             <i class="fa-solid fa-book-open-reader nav-icon"></i>
             Mata Pelajaran
           </a>
         </li>
-
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'classrooms' %}active{% endif %}" href="/classrooms">
             <i class="fa-solid fa-people-roof nav-icon"></i>
@@ -122,36 +136,146 @@
         </li>
 
         <li class="nav-title">Manajemen Akademik</li>
-
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'schedules' %}active{% endif %}" href="/schedules">
             <i class="fa-solid fa-clock-rotate-left nav-icon"></i>
             Jadwal Pelajaran
           </a>
         </li>
-
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'duty_teachers' %}active{% endif %}" href="/duty-teachers">
             <i class="fa-solid fa-user-shield nav-icon"></i>
             Data Guru Piket
           </a>
         </li>
-        {% endif %}
 
         <li class="nav-title">Operasional Presensi</li>
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'attendance' %}active{% endif %}" href="/attendance">
             <i class="fa-solid fa-camera-retro nav-icon"></i>
-            Absensi Guru di Kelas
-            <span class="badge badge-sm bg-danger ms-auto">Wajib GPS</span>
+            Monitoring Presensi
           </a>
         </li>
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'attendance_history' %}active{% endif %}" href="/attendance/history">
             <i class="fa-solid fa-clock-rotate-left nav-icon"></i>
-            Riwayat Absensi Guru
+            Riwayat Presensi Guru
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'reports' %}active{% endif %}" href="/principal/reports">
+            <i class="fa-solid fa-chart-line nav-icon"></i>
+            Rekapitulasi Kehadiran
+          </a>
+        </li>
+
+        <li class="nav-title">Pengaturan</li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'school_users' %}active{% endif %}" href="/school/users">
+            <i class="fa-solid fa-users-gear nav-icon"></i>
+            Akun Pengguna
+          </a>
+        </li>
+        {% endif %}
+
+        {# ========================================== #}
+        {# MENU: KEPALA SEKOLAH                       #}
+        {# ========================================== #}
+        {% if user.role.value == 'kepala_sekolah' %}
+        <li class="nav-title">Pengawasan & Laporan</li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'reports' %}active{% endif %}" href="/principal/reports">
+            <i class="fa-solid fa-chart-line nav-icon"></i>
+            Rekap Kehadiran Guru
+            <span class="badge badge-sm bg-primary ms-auto">Laporan</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'attendance_history' %}active{% endif %}" href="/attendance/history">
+            <i class="fa-solid fa-clock-rotate-left nav-icon"></i>
+            Jurnal & Foto Presensi
+          </a>
+        </li>
+
+        <li class="nav-title">Monitoring Sekolah</li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'teachers' %}active{% endif %}" href="/teachers">
+            <i class="fa-solid fa-chalkboard-user nav-icon"></i>
+            Direktori Guru
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'students' %}active{% endif %}" href="/students">
+            <i class="fa-solid fa-users nav-icon"></i>
+            Data Siswa
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'schedules' %}active{% endif %}" href="/schedules">
+            <i class="fa-solid fa-calendar-days nav-icon"></i>
+            Jadwal Pelajaran
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'duty_teachers' %}active{% endif %}" href="/duty-teachers">
+            <i class="fa-solid fa-user-shield nav-icon"></i>
+            Petugas Guru Piket
+          </a>
+        </li>
+        {% endif %}
+
+        {# ========================================== #}
+        {# MENU: GURU                                 #}
+        {# ========================================== #}
+        {% if user.role.value == 'guru' %}
+        <li class="nav-title">Presensi Mengajar</li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'attendance' %}active{% endif %}" href="/attendance">
+            <i class="fa-solid fa-camera-retro nav-icon"></i>
+            Presensi di Kelas
+            <span class="badge badge-sm bg-danger ms-auto">GPS + Foto</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'my_attendance' %}active{% endif %}" href="/teacher/my-attendance">
+            <i class="fa-solid fa-clock-rotate-left nav-icon"></i>
+            Riwayat Presensi Saya
+          </a>
+        </li>
+
+        <li class="nav-title">Kegiatan Akademik</li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'my_schedules' %}active{% endif %}" href="/teacher/my-schedules">
+            <i class="fa-solid fa-calendar-check nav-icon"></i>
+            Jadwal Mengajar Saya
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'duty_teachers' %}active{% endif %}" href="/duty-teachers">
+            <i class="fa-solid fa-user-shield nav-icon"></i>
+            Jadwal Guru Piket
+          </a>
+        </li>
+        {% endif %}
+
+        {# ========================================== #}
+        {# MENU: SISWA                                #}
+        {# ========================================== #}
+        {% if user.role.value == 'siswa' %}
+        <li class="nav-title">Portal Siswa</li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'my_class_schedule' %}active{% endif %}" href="/student/my-class-schedule">
+            <i class="fa-solid fa-calendar-days nav-icon"></i>
+            Jadwal Pelajaran Kelas
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_menu == 'duty_teachers' %}active{% endif %}" href="/duty-teachers">
+            <i class="fa-solid fa-user-shield nav-icon"></i>
+            Guru Piket Hari Ini
+          </a>
+        </li>
+        {% endif %}
       </ul>
 
       <div class="sidebar-footer border-top d-none d-md-flex p-2 text-center text-secondary small">

@@ -5,17 +5,19 @@ Render antarmuka pengguna berbasis template Jinja2 dan CoreUI + Font Awesome.
 
 from datetime import datetime, time
 from math import ceil
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, Form, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user_from_token
 from app.core.database import get_db
+from app.core.security import get_password_hash
 from app.models.models import (
     AcademicYear,
     AttendanceStatus,
@@ -24,6 +26,7 @@ from app.models.models import (
     DutyTeacher,
     Schedule,
     School,
+    Student,
     Subject,
     Teacher,
     TeacherAttendance,
@@ -36,6 +39,7 @@ from app.services.academic_service import (
     ClassroomService,
     DutyTeacherService,
     ScheduleService,
+    StudentService,
     SubjectService,
     TeacherService,
 )
@@ -263,45 +267,123 @@ async def dashboard_page(
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     active_ay = None
-    total_teachers = 0
-    total_classrooms = 0
-    total_subjects = 0
-    total_schedules = 0
+    today_date = datetime.now().date()
+    today_dow = AttendanceService.get_today_day_of_week(today_date)
+    today_day_name = today_dow.value if today_dow else "Minggu (Hari Libur)"
 
+    context = {
+        "user": user,
+        "school": school,
+        "active_academic_year": None,
+        "active_menu": "dashboard",
+        "today_day_name": today_day_name,
+        "str": str,
+    }
+
+    # Data Khusus Super Admin
+    if user.role == UserRole.SUPERADMIN:
+        sc_res = await db.execute(select(func.count(School.id)).where(School.deleted_at.is_(None)))
+        context["total_schools"] = sc_res.scalar() or 0
+
+        tg_res = await db.execute(select(func.count(Teacher.id)).where(Teacher.deleted_at.is_(None)))
+        context["total_teachers_global"] = tg_res.scalar() or 0
+
+        stg_res = await db.execute(select(func.count(Student.id)).where(Student.deleted_at.is_(None)))
+        context["total_students_global"] = stg_res.scalar() or 0
+
+        atg_res = await db.execute(select(func.count(TeacherAttendance.id)).where(TeacherAttendance.deleted_at.is_(None)))
+        context["total_attendances_global"] = atg_res.scalar() or 0
+
+        return templates.TemplateResponse(request=request, name="dashboard.html", context=context)
+
+    # Data untuk Pengguna di Sekolah (Operator, Kepala Sekolah, Guru, Siswa)
     if user.school_id:
         active_ay = await AcademicYearService.get_active(db, user.school_id)
-        # Hitung statistik sekolah
-        t_res = await db.execute(select(func.count(Teacher.id)).where(Teacher.school_id == user.school_id, Teacher.deleted_at.is_(None)))
-        total_teachers = t_res.scalar() or 0
+        context["active_academic_year"] = active_ay
+        ay_id = active_ay.id if active_ay else None
 
-        c_res = await db.execute(select(func.count(Classroom.id)).where(Classroom.school_id == user.school_id, Classroom.deleted_at.is_(None)))
-        total_classrooms = c_res.scalar() or 0
+        # Data Kepala Sekolah
+        if user.role == UserRole.KEPALA_SEKOLAH:
+            stats = await AttendanceService.get_summary_stats(db, user.school_id, academic_year_id=ay_id, target_date=today_date)
+            context["stats_today"] = stats
 
-        s_res = await db.execute(select(func.count(Subject.id)).where(Subject.school_id == user.school_id, Subject.deleted_at.is_(None)))
-        total_subjects = s_res.scalar() or 0
+            # Guru piket hari ini
+            if active_ay and today_dow:
+                duties, _, _ = await DutyTeacherService.get_list(db, user.school_id, academic_year_id=active_ay.id, day_of_week=today_dow, limit=10)
+                context["duty_teachers_today"] = duties
+            else:
+                context["duty_teachers_today"] = []
 
-        if active_ay:
-            sch_res = await db.execute(select(func.count(Schedule.id)).where(
-                Schedule.school_id == user.school_id,
-                Schedule.academic_year_id == active_ay.id,
-                Schedule.deleted_at.is_(None)
-            ))
-            total_schedules = sch_res.scalar() or 0
+            # 5 Presensi terbaru hari ini
+            rec_query = select(TeacherAttendance).options(
+                selectinload(TeacherAttendance.teacher),
+                selectinload(TeacherAttendance.schedule).selectinload(Schedule.classroom),
+                selectinload(TeacherAttendance.schedule).selectinload(Schedule.subject)
+            ).where(
+                TeacherAttendance.school_id == user.school_id,
+                TeacherAttendance.attendance_date == today_date,
+                TeacherAttendance.deleted_at.is_(None)
+            ).order_by(TeacherAttendance.created_at.desc()).limit(5)
+            rec_res = await db.execute(rec_query)
+            context["recent_attendances"] = rec_res.scalars().all()
+
+        # Data Guru
+        elif user.role == UserRole.GURU:
+            curr_teacher = await AttendanceService.get_teacher_by_user_or_id(db, user.school_id, user)
+            context["current_teacher"] = curr_teacher
+            if curr_teacher and active_ay:
+                schedules = await AttendanceService.get_schedules_for_attendance(
+                    db, user.school_id, academic_year_id=active_ay.id, teacher_id=curr_teacher.id, target_date=today_date
+                )
+                context["teacher_today_schedules"] = schedules
+            else:
+                context["teacher_today_schedules"] = []
+
+        # Data Siswa
+        elif user.role == UserRole.SISWA:
+            student = await StudentService.get_by_user_id(db, user.id)
+            context["student"] = student
+            if student and student.classroom_id and active_ay:
+                student_classes = await AttendanceService.get_student_class_today(
+                    db, user.school_id, classroom_id=student.classroom_id, academic_year_id=active_ay.id, target_date=today_date
+                )
+                context["student_today_classes"] = student_classes
+            else:
+                context["student_today_classes"] = []
+
+            # Guru piket hari ini untuk siswa
+            if active_ay and today_dow:
+                duties, _, _ = await DutyTeacherService.get_list(db, user.school_id, academic_year_id=active_ay.id, day_of_week=today_dow, limit=10)
+                context["duty_teachers_today"] = duties
+            else:
+                context["duty_teachers_today"] = []
+
+        # Data Default / Operator Sekolah
+        else:
+            t_res = await db.execute(select(func.count(Teacher.id)).where(Teacher.school_id == user.school_id, Teacher.deleted_at.is_(None)))
+            context["total_teachers"] = t_res.scalar() or 0
+
+            st_res = await db.execute(select(func.count(Student.id)).where(Student.school_id == user.school_id, Student.deleted_at.is_(None)))
+            context["total_students"] = st_res.scalar() or 0
+
+            c_res = await db.execute(select(func.count(Classroom.id)).where(Classroom.school_id == user.school_id, Classroom.deleted_at.is_(None)))
+            context["total_classrooms"] = c_res.scalar() or 0
+
+            s_res = await db.execute(select(func.count(Subject.id)).where(Subject.school_id == user.school_id, Subject.deleted_at.is_(None)))
+            context["total_subjects"] = s_res.scalar() or 0
+
+            if active_ay:
+                sch_res = await db.execute(select(func.count(Schedule.id)).where(
+                    Schedule.school_id == user.school_id,
+                    Schedule.academic_year_id == active_ay.id,
+                    Schedule.deleted_at.is_(None)
+                ))
+                context["total_schedules"] = sch_res.scalar() or 0
 
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
-        context={
-            "user": user,
-            "school": school,
-            "active_academic_year": active_ay,
-            "total_teachers": total_teachers,
-            "total_classrooms": total_classrooms,
-            "total_subjects": total_subjects,
-            "total_schedules": total_schedules,
-            "active_menu": "dashboard",
-            "str": str,
-        }
+        context=context
     )
 
 
@@ -529,6 +611,53 @@ async def teachers_delete(
     return RedirectResponse(url="/teachers", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@router.get("/teachers/sample-excel")
+async def teachers_sample_excel():
+    """
+    Mengunduh berkas template Excel contoh untuk impor massal guru.
+    """
+    stream = TeacherService.generate_sample_excel()
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=Template_Impor_Guru.xlsx"}
+    )
+
+
+@router.post("/teachers/import")
+async def teachers_import_excel(
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    user, _ = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    file_bytes = await file.read()
+    await TeacherService.import_from_excel(db, user.school_id, file_bytes)
+    return RedirectResponse(url="/teachers", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/teachers/export-excel")
+async def teachers_export_excel(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    school_name = school.name if school else "Sekolah"
+    stream = await TeacherService.export_to_excel(db, user.school_id, school_name=school_name)
+    filename = f"Data_Guru_{school_name.replace(' ', '_')}.xlsx"
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 # ---------------------------------------------------------
 # 3. DATA MATA PELAJARAN
 # ---------------------------------------------------------
@@ -701,6 +830,145 @@ async def classrooms_delete(
 
     await ClassroomService.soft_delete(db, user.school_id, classroom_id)
     return RedirectResponse(url="/classrooms", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ---------------------------------------------------------
+# DATA SISWA (PESERTA DIDIK)
+# ---------------------------------------------------------
+
+@router.get("/students", response_class=HTMLResponse)
+async def students_page(
+    request: Request,
+    page: int = 1,
+    classroom_id: Optional[str] = None,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    cid = UUID(classroom_id) if classroom_id else None
+    students, total_count, total_pages = await StudentService.get_list(
+        db, user.school_id, classroom_id=cid, page=page, limit=10, search=search
+    )
+
+    classrooms_list = await ClassroomService.get_all_active(db, user.school_id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="students/list.html",
+        context={
+            "user": user,
+            "school": school,
+            "students": students,
+            "classrooms_list": classrooms_list,
+            "selected_class_id": classroom_id or "",
+            "page": page,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "search": search or "",
+            "active_menu": "students",
+            "str": str,
+            "range": range,
+        }
+    )
+
+
+@router.post("/students")
+async def students_create(
+    request: Request,
+    nisn: str = Form(...),
+    name: str = Form(...),
+    gender: str = Form("L"),
+    classroom_id: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    nis: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db)
+):
+    user, _ = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    cid = UUID(classroom_id) if classroom_id else None
+    await StudentService.create(
+        db=db,
+        school_id=user.school_id,
+        classroom_id=cid,
+        nisn=nisn,
+        name=name,
+        gender=gender,
+        phone=phone,
+        email=email,
+        address=address,
+        nis=nis
+    )
+    return RedirectResponse(url="/students", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/students/{student_id}/delete")
+async def students_delete(
+    student_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    user, _ = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    await StudentService.soft_delete(db, user.school_id, student_id)
+    return RedirectResponse(url="/students", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/students/sample-excel")
+async def students_sample_excel():
+    """
+    Mengunduh berkas template Excel contoh untuk impor massal siswa.
+    """
+    stream = StudentService.generate_sample_excel()
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=Template_Impor_Siswa.xlsx"}
+    )
+
+
+@router.post("/students/import")
+async def students_import_excel(
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    user, _ = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    file_bytes = await file.read()
+    await StudentService.import_from_excel(db, user.school_id, file_bytes)
+    return RedirectResponse(url="/students", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/students/export-excel")
+async def students_export_excel(
+    request: Request,
+    classroom_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    school_name = school.name if school else "Sekolah"
+    cid = UUID(classroom_id) if classroom_id else None
+    stream = await StudentService.export_to_excel(db, user.school_id, school_name=school_name, classroom_id=cid)
+    filename = f"Data_Siswa_{school_name.replace(' ', '_')}.xlsx"
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 # ---------------------------------------------------------
@@ -1147,3 +1415,375 @@ async def attendance_history_page(
             "range": range,
         }
     )
+
+
+# ---------------------------------------------------------
+# 8. LAPORAN & REKAPITULASI KEPALA SEKOLAH
+# ---------------------------------------------------------
+
+@router.get("/principal/reports", response_class=HTMLResponse)
+async def principal_reports_page(
+    request: Request,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Halaman Rekapitulasi Presensi Guru untuk Kepala Sekolah & Operator.
+    """
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    if not active_ay:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    s_date = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
+    e_date = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+
+    reports = await AttendanceService.get_rekap_report(
+        db=db,
+        school_id=user.school_id,
+        academic_year_id=active_ay.id,
+        start_date=s_date,
+        end_date=e_date
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="principal/reports.html",
+        context={
+            "user": user,
+            "school": school,
+            "active_ay": active_ay,
+            "reports": reports,
+            "start_date": start_date or "",
+            "end_date": end_date or "",
+            "active_menu": "principal_reports"
+        }
+    )
+
+
+@router.get("/principal/reports/print", response_class=HTMLResponse)
+async def principal_reports_print(
+    request: Request,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Format Cetak Dokumen Resmi PDF / Lembar Evaluasi Presensi Guru.
+    """
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    s_date = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
+    e_date = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+
+    reports = []
+    if active_ay:
+        reports = await AttendanceService.get_rekap_report(
+            db=db,
+            school_id=user.school_id,
+            academic_year_id=active_ay.id,
+            start_date=s_date,
+            end_date=e_date
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="principal/print_report.html",
+        context={
+            "user": user,
+            "school": school,
+            "active_ay": active_ay,
+            "reports": reports,
+            "start_date": start_date or "",
+            "end_date": end_date or "",
+            "now": datetime.now()
+        }
+    )
+
+
+@router.get("/principal/reports/export-excel")
+async def principal_reports_export_excel(
+    request: Request,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Ekspor berkas rekapitulasi kehadiran pendidik ke format Excel rapih.
+    """
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    if not active_ay:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    school_name = school.name if school else "Sekolah"
+    s_date = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
+    e_date = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+
+    reports = await AttendanceService.get_rekap_report(
+        db=db,
+        school_id=user.school_id,
+        academic_year_id=active_ay.id,
+        start_date=s_date,
+        end_date=e_date
+    )
+    period_label = f"{start_date or 'Awal Periode'} s.d {end_date or 'Hari Ini'}"
+    stream = AttendanceService.export_rekap_excel(
+        school_name=school_name,
+        period_label=period_label,
+        rekap_data=reports
+    )
+    filename = f"Rekap_Presensi_Guru_{school_name.replace(' ', '_')}.xlsx"
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+# ---------------------------------------------------------
+# 9. HALAMAN KHUSUS PERAN GURU
+# ---------------------------------------------------------
+
+@router.get("/teacher/my-schedules", response_class=HTMLResponse)
+async def teacher_my_schedules_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Jadwal Mengajar Saya (Pribadi Guru) dalam satu minggu.
+    """
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    my_teacher = await AttendanceService.get_teacher_by_user_or_id(db, user.school_id, user)
+
+    schedules = []
+    if active_ay and my_teacher:
+        schedules = await ScheduleService.get_by_teacher(
+            db=db,
+            school_id=user.school_id,
+            academic_year_id=active_ay.id,
+            teacher_id=my_teacher.id
+        )
+
+    day_schedules = {d: [] for d in ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]}
+    for s in schedules:
+        dow_val = s.day_of_week.value if hasattr(s.day_of_week, "value") else str(s.day_of_week)
+        if dow_val in day_schedules:
+            day_schedules[dow_val].append(s)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="teacher/my_schedules.html",
+        context={
+            "user": user,
+            "school": school,
+            "active_ay": active_ay,
+            "my_teacher": my_teacher,
+            "schedules": schedules,
+            "day_schedules": day_schedules,
+            "active_menu": "my_schedules"
+        }
+    )
+
+
+@router.get("/teacher/my-attendance", response_class=HTMLResponse)
+async def teacher_my_attendance_page(
+    request: Request,
+    page: int = 1,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Riwayat Presensi Pribadi Guru.
+    """
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    my_teacher = await AttendanceService.get_teacher_by_user_or_id(db, user.school_id, user)
+
+    attendances = []
+    total_count = 0
+    total_pages = 1
+
+    if active_ay and my_teacher:
+        attendances, total_count, total_pages = await AttendanceService.get_history(
+            db=db,
+            school_id=user.school_id,
+            academic_year_id=active_ay.id,
+            teacher_id=my_teacher.id,
+            page=page,
+            limit=10
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="teacher/my_attendance.html",
+        context={
+            "user": user,
+            "school": school,
+            "active_ay": active_ay,
+            "my_teacher": my_teacher,
+            "attendances": attendances,
+            "page": page,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "active_menu": "my_attendance",
+            "str": str,
+            "range": range
+        }
+    )
+
+
+# ---------------------------------------------------------
+# 10. HALAMAN KHUSUS PERAN SISWA
+# ---------------------------------------------------------
+
+@router.get("/student/my-class-schedule", response_class=HTMLResponse)
+async def student_my_class_schedule_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Jadwal Pelajaran Kelas Saya (Pribadi Siswa) dalam satu minggu.
+    """
+    user, school = await _get_auth_context(request, db)
+    if not user or not user.school_id:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    active_ay = await AcademicYearService.get_active(db, user.school_id)
+    student = await StudentService.get_by_user_id(db, user.id)
+
+    schedules = []
+    if active_ay and student and student.classroom_id:
+        schedules = await ScheduleService.get_all_for_print(
+            db=db,
+            school_id=user.school_id,
+            academic_year_id=active_ay.id,
+            classroom_id=student.classroom_id
+        )
+
+    day_schedules = {d: [] for d in ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]}
+    for s in schedules:
+        dow_val = s.day_of_week.value if hasattr(s.day_of_week, "value") else str(s.day_of_week)
+        if dow_val in day_schedules:
+            day_schedules[dow_val].append(s)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="student/schedule.html",
+        context={
+            "user": user,
+            "school": school,
+            "active_ay": active_ay,
+            "student": student,
+            "classroom": student.classroom if student else None,
+            "schedules": schedules,
+            "day_schedules": day_schedules,
+            "active_menu": "student_schedule"
+        }
+    )
+
+
+# ---------------------------------------------------------
+# 11. MANAJEMEN AKUN PENGGUNA SEKOLAH
+# ---------------------------------------------------------
+
+@router.get("/school/users", response_class=HTMLResponse)
+async def school_users_page(
+    request: Request,
+    page: int = 1,
+    search: Optional[str] = None,
+    role: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Halaman Kelola Akun Pengguna Sekolah (Superadmin & Operator Sekolah).
+    """
+    user, school = await _get_auth_context(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    if user.role not in [UserRole.SUPERADMIN, UserRole.OPERATOR_SEKOLAH]:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    # Superadmin dapat melihat pengguna global atau spesifik sekolah
+    target_school_id = None if user.role == UserRole.SUPERADMIN else user.school_id
+    role_filter = UserRole(role) if role in [r.value for r in UserRole] else None
+
+    users_list, total_count, total_pages = await AuthService.get_school_users(
+        db=db,
+        school_id=target_school_id,
+        page=page,
+        limit=10,
+        search=search,
+        role=role_filter
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="school_users/list.html",
+        context={
+            "user": user,
+            "school": school,
+            "users": users_list,
+            "page": page,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "search": search or "",
+            "selected_role": role or "",
+            "roles": [UserRole.SUPERADMIN, UserRole.OPERATOR_SEKOLAH, UserRole.KEPALA_SEKOLAH, UserRole.GURU, UserRole.SISWA],
+            "active_menu": "school_users",
+            "str": str,
+            "range": range
+        }
+    )
+
+
+@router.post("/school/users")
+async def school_users_create(
+    request: Request,
+    full_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    role: str = Form(...),
+    nip: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Menambahkan Akun Pengguna Baru ke Sekolah / Sistem.
+    """
+    user, _ = await _get_auth_context(request, db)
+    if not user or user.role not in [UserRole.SUPERADMIN, UserRole.OPERATOR_SEKOLAH]:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+    target_role = UserRole(role) if role in [r.value for r in UserRole] else UserRole.GURU
+    target_school_id = None if (user.role == UserRole.SUPERADMIN and target_role == UserRole.SUPERADMIN) else user.school_id
+
+    await AuthService.create_school_user(
+        db=db,
+        school_id=target_school_id,
+        email=email,
+        password=password,
+        full_name=full_name,
+        role=target_role,
+        phone=phone,
+        nip=nip
+    )
+
+    return RedirectResponse(url="/school/users", status_code=status.HTTP_303_SEE_OTHER)
