@@ -1,0 +1,35 @@
+name: presensi_pintar_smp
+description: "Aplikasi Presensi Guru & Siswa SMP Pintar berbasis Flutter dengan Desain Modern UI Kits"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Styling Modern
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.1.0
+  intl: ^0.19.0
+
+  # Komunikasi RESTful API Backend
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
+
+  # GPS Geolokasi & Kamera Foto Bukti Presensi
+  geolocator: ^11.0.0
+  image_picker: ^1.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
