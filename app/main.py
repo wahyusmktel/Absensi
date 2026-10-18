@@ -23,14 +23,14 @@ async def lifespan(app: FastAPI):
     """
     Siklus hidup aplikasi: inisialisasi basis data dan super admin saat aplikasi dimulai.
     """
-    print(f"🚀 Memulai {settings.APP_NAME} v{settings.APP_VERSION}...")
+    print(f"[*] Memulai {settings.APP_NAME} v{settings.APP_VERSION}...")
     try:
         await init_db()
-        print("✅ Database terinisialisasi dengan sukses.")
+        print("[+] Database terinisialisasi dengan sukses.")
     except Exception as e:
-        print(f"❌ Gagal menginisialisasi database: {e}")
+        print(f"[-] Gagal menginisialisasi database: {e}")
     yield
-    print(f"🛑 Menghentikan {settings.APP_NAME}...")
+    print(f"[*] Menghentikan {settings.APP_NAME}...")
 
 
 # Inisialisasi Aplikasi FastAPI

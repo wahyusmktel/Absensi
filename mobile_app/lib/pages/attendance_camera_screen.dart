@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/constants.dart';
@@ -24,7 +24,7 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
   final _materialController = TextEditingController();
   final _notesController = TextEditingController();
 
-  File? _imageFile;
+  Uint8List? _imageBytes;
   String? _photoBase64;
   double? _latitude;
   double? _longitude;
@@ -104,12 +104,11 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
       );
 
       if (picked != null) {
-        final file = File(picked.path);
-        final bytes = await file.readAsBytes();
+        final bytes = await picked.readAsBytes();
         final base64String = base64Encode(bytes);
 
         setState(() {
-          _imageFile = file;
+          _imageBytes = bytes;
           _photoBase64 = "data:image/jpeg;base64,$base64String";
         });
       }
@@ -307,18 +306,18 @@ class _AttendanceCameraScreenState extends State<AttendanceCameraScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: _imageFile != null ? AppConstants.primaryColor : AppConstants.dividerColor,
+                    color: _imageBytes != null ? AppConstants.primaryColor : AppConstants.dividerColor,
                     width: 1.5,
                   ),
                   boxShadow: AppConstants.softCardShadow,
                 ),
-                child: _imageFile != null
+                child: _imageBytes != null
                     ? Stack(
                         fit: StackFit.expand,
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(18),
-                            child: Image.file(_imageFile!, fit: BoxFit.cover),
+                            child: Image.memory(_imageBytes!, fit: BoxFit.cover),
                           ),
                           Positioned(
                             bottom: 12,
